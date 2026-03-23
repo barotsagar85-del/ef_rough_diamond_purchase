@@ -302,11 +302,17 @@ const fd = (v) => (v != null && !isNaN(v) && v !== 0) ? "$" + Number(v).toLocale
 
 const isHot = (avgSize, co, cl) => {
   if (!avgSize || avgSize <= 0) return false;
-  // Commercial cells are never hot
+  // Only DEF/G/H × VVS/VS1/VS2 × Rounds can be hot (per Amay's demand forecast)
   if (co && cl && isCommercial(co, cl)) return false;
-  if (avgSize >= 0.012 && avgSize <= 0.013) return true;  // Band 1
-  if (avgSize >= 0.033 && avgSize <= 0.037) return true;   // Band 2
-  if (avgSize >= 0.078 && avgSize <= 0.200) return true;   // Band 3 (s6+s7+s8)
+  // Band 1: 0.012-0.013ct (1.40-1.49mm)
+  if (avgSize >= 0.012 && avgSize <= 0.013) return true;
+  // Band 2: 0.035ct (2.00-2.09mm)
+  if (avgSize >= 0.035 && avgSize < 0.039) return true;
+  // Band 3a: 0.078-0.086ct (2.70-2.89mm)
+  if (avgSize >= 0.078 && avgSize <= 0.089) return true;
+  // GAP: 0.090-0.130ct (2.90-3.29mm) — NOT HOT
+  // Band 3b: 0.135-0.175ct (3.30-3.69mm)
+  if (avgSize >= 0.130 && avgSize <= 0.175) return true;
   return false;
 };
 
@@ -433,7 +439,7 @@ td.left2 { text-align: left; color: var(--text3); font-size: 11px; }
 `;
 
 /* ──────────── MAIN APP ──────────── */
-const TABS = ["Parcel Input","Assortment","Polish Calc","Price Masters","Summary","Demand Forecast"];
+const TABS = ["Parcel Input","Assortment","Polish Calc","Price Masters","Summary","Demand Forecast","Quick View"];
 const MASTER_TAB = 99;
 const BID_COMPARE_TAB = 98;
 
@@ -459,7 +465,7 @@ export default function App() {
       ? { Round: 0.40, "Pear/Oval": 0.45, Baguette: 0.45, Marquise: 0.45 }
       : { Round: 0.38, "Pear/Oval": 0.41, Baguette: 0.41, Marquise: 0.41 },
     mult: [[1,1,1],[1,1,1],[1,1,1],[1,1,1]],
-    fd: { med:10, stg:25 }, efDisc: 0
+    fd: { med:25, stg:25 }, efDisc: 0
   })));
   const [flus, setFlus] = useState(() => PARCEL_DEFS.map(d => d.flu));
   const [asts, setAsts] = useState(() => PARCEL_DEFS.map(d => buildA(d.type, d.segs, d.pre, d.pre_mb, d)));
@@ -953,8 +959,8 @@ export default function App() {
                     </tr>))}</tbody></table>
               </div>
               <div className="row" style={{marginTop:12}}>
-                <div className="field"><span className="lbl">Med Fluo Disc %</span><NI value={cfg.fd.med} onChange={v => setCfg(c => ({...c, fd:{...c.fd, med: v === "" ? 0 : parseFloat(v) || 0}}))} /></div>
-                <div className="field"><span className="lbl">Stg Fluo Disc %</span><NI value={cfg.fd.stg} onChange={v => setCfg(c => ({...c, fd:{...c.fd, stg: v === "" ? 0 : parseFloat(v) || 0}}))} /></div>
+                <div className="field"><span className="lbl">Med Fluo Disc %</span><span className="ni" style={{display:"inline-block",padding:"2px 6px",fontFamily:"'DM Mono',monospace",fontSize:12,color:"var(--text2)"}}>25%</span></div>
+                <div className="field"><span className="lbl">Stg Fluo Disc %</span><span className="ni" style={{display:"inline-block",padding:"2px 6px",fontFamily:"'DM Mono',monospace",fontSize:12,color:"var(--text2)"}}>25%</span></div>
               </div>
             </div>
           </div>
@@ -1806,8 +1812,161 @@ export default function App() {
           </div>
 
           <div style={{padding:"10px 0",fontSize:10,color:"var(--text3)"}}>
-            Hot sizes defined as: Band 1 (0.012-0.013ct / 1.40-1.49mm) · Band 2 (0.035ct / 2.00-2.09mm) · Band 3a-c (0.078-0.200ct / 2.70-3.80mm, split by sieve s6/s7/s8). Based on EF PL purple-highlighted rows with active brand orders.
+            Hot sizes per Amay demand forecast: Band 1 (0.012-0.013ct / 1.40-1.49mm) · Band 2 (0.035ct / 2.00-2.09mm) · Band 3a (0.078-0.089ct / 2.70-2.89mm) · Band 3b (0.135-0.175ct / 3.30-3.69mm) · Only DEF/G/H × VVS/VS1/VS2 × Rounds.
           </div>
+          </>;
+        })()}
+
+        {/* ═══ TAB 6: QUICK VIEW — Combined polish output with editable prices & margin calc ═══ */}
+        {tab === 6 && (() => {
+          // Group all polish rows by sieve → color → clarity
+          const grouped = {};
+          for (const r of all) {
+            if (r.pC <= 0 || !r.av || r.av <= 0) continue;
+            const svObj = findSv(r.av);
+            if (!svObj) continue;
+            const key = `${svObj.id}|${r.co}|${r.cl}`;
+            if (!grouped[key]) grouped[key] = { sv: svObj, co: r.co, cl: r.cl, sh: r.sh, rC: 0, pC: 0, pP: 0, tot: 0, rP: 0 };
+            grouped[key].rC += r.rC; grouped[key].pC += r.pC; grouped[key].pP += r.pP; grouped[key].tot += r.tot; grouped[key].rP += r.rP;
+          }
+          const rows = Object.values(grouped).sort((a,b) => {
+            const si = SIEVE_RANGES.findIndex(s=>s.id===a.sv.id) - SIEVE_RANGES.findIndex(s=>s.id===b.sv.id);
+            if (si !== 0) return si;
+            const ci = COLORS_AST.indexOf(a.co) - COLORS_AST.indexOf(b.co);
+            if (ci !== 0) return ci;
+            return CLARITIES.indexOf(a.cl) - CLARITIES.indexOf(b.cl);
+          });
+
+          // Editable price overrides for this tab (stored in qvPrices state)
+          const getQvPrice = (svId, co, cl) => {
+            const k = `qv:${svId}:${co}:${cl}`;
+            if (pmOverrides[k] !== undefined) return pmOverrides[k];
+            const src = pricingMode === "PL_M" ? PM_PLM : pricingMode === "PL_B" ? PM_PLB : pm;
+            return src["Round"]?.[svId]?.[co]?.[cl] || 0;
+          };
+          const setQvPrice = (svId, co, cl, v) => {
+            const k = `qv:${svId}:${co}:${cl}`;
+            setPmOverrides(p => ({...p, [k]: v === "" ? undefined : parseFloat(v) || 0}));
+          };
+
+          // Totals
+          const totRc = rows.reduce((s,r)=>s+r.rC,0);
+          const totPc = rows.reduce((s,r)=>s+r.pC,0);
+          const totPp = rows.reduce((s,r)=>s+r.pP,0);
+
+          return <>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+              <div>
+                <div style={{fontSize:14,fontWeight:700,color:"var(--text)"}}>Quick View — Combined Polish Output & Pricing</div>
+                <div style={{fontSize:11,color:"var(--text3)"}}>All sizes, colors, clarities · Editable $/ct · Active PL: {pricingMode==="PL_B"?"PL-B":pricingMode==="PL_M"?"PL-M":"PL-A"}</div>
+              </div>
+            </div>
+
+            {/* Margin & Labour controls */}
+            <div className="card" style={{marginBottom:12}}>
+              <div className="card-body" style={{display:"flex",gap:16,alignItems:"center",flexWrap:"wrap",padding:"10px 16px"}}>
+                <div className="field"><span className="lbl">Labour $/ct rough</span>
+                  <NI value={globalLabour} onChange={v => setGlobalLabour(v === "" ? 0 : parseFloat(v) || 0)} /></div>
+                <div className="field"><span className="lbl">Profit %</span>
+                  <NI value={globalProfit} onChange={v => setGlobalProfit(v === "" ? 0 : parseFloat(v) || 0)} /></div>
+                <div style={{borderLeft:"2px solid var(--border)",paddingLeft:16}}>
+                  <div style={{fontSize:10,color:"var(--text3)"}}>Total Rough</div>
+                  <div style={{fontWeight:700,fontFamily:"'DM Mono',monospace"}}>{f(totRc,1)} cts</div>
+                </div>
+                <div>
+                  <div style={{fontSize:10,color:"var(--text3)"}}>Total Polish</div>
+                  <div style={{fontWeight:700,fontFamily:"'DM Mono',monospace"}}>{f(totPc,1)} cts</div>
+                </div>
+                <div>
+                  <div style={{fontSize:10,color:"var(--text3)"}}>Yield</div>
+                  <div style={{fontWeight:700,fontFamily:"'DM Mono',monospace"}}>{totRc>0?(totPc/totRc*100).toFixed(1):0}%</div>
+                </div>
+                <div>
+                  <div style={{fontSize:10,color:"var(--text3)"}}>Total Value</div>
+                  <div style={{fontWeight:700,fontFamily:"'DM Mono',monospace",color:"var(--blue)"}}>${rows.reduce((s,r)=>{
+                    const p = getQvPrice(r.sv.id, r.co, r.cl);
+                    return s + r.pC * p;
+                  },0).toLocaleString()}</div>
+                </div>
+                <div>
+                  <div style={{fontSize:10,color:"var(--text3)"}}>Bid $/ct (@ {globalProfit}%)</div>
+                  {(() => {
+                    const totVal = rows.reduce((s,r)=>s + r.pC * getQvPrice(r.sv.id, r.co, r.cl), 0);
+                    const bid = totRc > 0 ? ((totVal - globalLabour * totRc) / totRc) * (1 - globalProfit/100) : 0;
+                    return <div style={{fontWeight:700,fontFamily:"'DM Mono',monospace",color:"var(--green)",fontSize:16}}>${Math.round(bid)}/ct</div>;
+                  })()}
+                </div>
+                <div>
+                  <div style={{fontSize:10,color:"var(--text3)"}}>Last Sold</div>
+                  <div style={{fontWeight:700,fontFamily:"'DM Mono',monospace",color:"var(--amber)"}}>${parcel.lastSold}/ct</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Main data table with editable prices */}
+            <div className="card">
+              <div className="overflow-x">
+                <table>
+                  <thead><tr>
+                    <th style={{textAlign:"left"}}>Sieve</th>
+                    <th style={{textAlign:"left"}}>MM</th>
+                    <th style={{textAlign:"left"}}>Color</th>
+                    <th>Clarity</th>
+                    <th>Rough CTS</th>
+                    <th>Pol CTS</th>
+                    <th>Pol PCS</th>
+                    <th>Avg Rough</th>
+                    <th>Avg Polish</th>
+                    <th style={{background:"var(--yellow-input)",minWidth:70}}>$/ct Pol</th>
+                    <th>Value $</th>
+                    <th>$/ct Rough</th>
+                    <th>Hot?</th>
+                  </tr></thead>
+                  <tbody>
+                    {rows.map((r, ri) => {
+                      const price = getQvPrice(r.sv.id, r.co, r.cl);
+                      const val = Math.round(r.pC * price);
+                      const avgR = r.rP > 0 ? r.rC / r.rP : 0;
+                      const avgP = r.pP > 0 ? r.pC / r.pP : 0;
+                      const perRough = r.rC > 0 ? val / r.rC : 0;
+                      const hot = isHot(avgP, r.co, r.cl);
+                      const comm = isCommercial(r.co, r.cl);
+                      return <tr key={ri} style={comm ? {opacity:0.6} : hot ? {background:"var(--green-bg)"} : {}}>
+                        <td style={{textAlign:"left",fontWeight:600,fontSize:11}}>{r.sv.sieve}</td>
+                        <td style={{textAlign:"left",fontSize:10,color:"var(--text3)"}}>{r.sv.mm}</td>
+                        <td style={{textAlign:"left",fontWeight:700,color:comm?"var(--text3)":"var(--blue)"}}>{r.co}</td>
+                        <td>{r.cl}</td>
+                        <td style={{fontFamily:"'DM Mono',monospace",fontSize:11}}>{f(r.rC,2)}</td>
+                        <td style={{fontFamily:"'DM Mono',monospace",fontSize:11}}>{f(r.pC,2)}</td>
+                        <td style={{fontFamily:"'DM Mono',monospace",fontSize:11}}>{Math.round(r.pP)}</td>
+                        <td style={{fontFamily:"'DM Mono',monospace",fontSize:11}}>{avgR > 0 ? f(avgR,4) : "—"}</td>
+                        <td style={{fontFamily:"'DM Mono',monospace",fontSize:11}}>{avgP > 0 ? f(avgP,4) : "—"}</td>
+                        <td style={{background:"var(--yellow-input)",border:"1px solid var(--yellow-border)"}}>
+                          <NI value={price} onChange={v => setQvPrice(r.sv.id, r.co, r.cl, v)} />
+                        </td>
+                        <td style={{fontFamily:"'DM Mono',monospace",fontSize:11,fontWeight:600}}>${val.toLocaleString()}</td>
+                        <td style={{fontFamily:"'DM Mono',monospace",fontSize:11}}>${Math.round(perRough)}</td>
+                        <td>{hot ? <span style={{color:"var(--green)",fontWeight:700}}>✓</span> : comm ? <span style={{color:"var(--text3)"}}>comm</span> : "—"}</td>
+                      </tr>;
+                    })}
+                    <tr style={{fontWeight:700,borderTop:"2px solid var(--border2)"}}>
+                      <td colSpan={4} style={{textAlign:"left"}}>TOTAL</td>
+                      <td style={{fontFamily:"'DM Mono',monospace"}}>{f(totRc,1)}</td>
+                      <td style={{fontFamily:"'DM Mono',monospace"}}>{f(totPc,1)}</td>
+                      <td style={{fontFamily:"'DM Mono',monospace"}}>{Math.round(totPp)}</td>
+                      <td colSpan={2}></td>
+                      <td></td>
+                      <td style={{fontFamily:"'DM Mono',monospace",color:"var(--blue)"}}>${rows.reduce((s,r)=>s+Math.round(r.pC*getQvPrice(r.sv.id,r.co,r.cl)),0).toLocaleString()}</td>
+                      <td style={{fontFamily:"'DM Mono',monospace"}}>${totRc>0?Math.round(rows.reduce((s,r)=>s+Math.round(r.pC*getQvPrice(r.sv.id,r.co,r.cl)),0)/totRc):0}</td>
+                      <td></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div style={{padding:"10px 16px",fontSize:11,color:"var(--text3)",borderTop:"1px solid var(--border)"}}>
+                Yellow cells are editable — override any $/ct to see instant impact on total value and bid. Bid = ((Total Value − Labour × Rough CTS) / Rough CTS) × (1 − Profit%)
+              </div>
+            </div>
           </>;
         })()}
 
