@@ -648,12 +648,12 @@ export default function App() {
     const totalPc = hotCts + coldCts;
     const hotPct = totalPc > 0 ? hotCts / totalPc * 100 : 0;
     const nc = r => !isCommercial(r.co, r.cl); // non-commercial filter
+    const mmCheck = (r, loMM, hiMM) => { const mm = ctsToMM(r.av); return nc(r) && mm >= loMM && mm <= hiMM; };
     const bands = [
-      { label: "Band 1", range: "0.012-0.013ct", mm: "1.40-1.49mm", rows: all.filter(r => nc(r) && r.av >= 0.012 && r.av <= 0.013) },
-      { label: "Band 2", range: "0.033-0.037ct", mm: "2.00-2.09mm", rows: all.filter(r => nc(r) && r.av >= 0.033 && r.av <= 0.037) },
-      { label: "Band 3a (s6)", range: "0.078-0.115ct", mm: "2.70-3.10mm", rows: all.filter(r => nc(r) && r.av >= 0.078 && r.av <= 0.115) },
-      { label: "Band 3b (s7)", range: "0.116-0.158ct", mm: "3.10-3.50mm", rows: all.filter(r => nc(r) && r.av >= 0.116 && r.av <= 0.158) },
-      { label: "Band 3c (s8)", range: "0.159-0.200ct", mm: "3.50-3.80mm", rows: all.filter(r => nc(r) && r.av >= 0.159 && r.av <= 0.200) },
+      { label: "Band 1", range: "1.40-1.49mm", mm: "0.012-0.013ct", rows: all.filter(r => mmCheck(r, 1.40, 1.49)) },
+      { label: "Band 2", range: "2.00-2.09mm", mm: "0.035ct", rows: all.filter(r => mmCheck(r, 2.00, 2.09)) },
+      { label: "Band 3a", range: "2.70-2.89mm", mm: "0.078-0.086ct", rows: all.filter(r => mmCheck(r, 2.70, 2.89)) },
+      { label: "Band 3b", range: "3.30-3.69mm", mm: "0.135-0.175ct", rows: all.filter(r => mmCheck(r, 3.30, 3.685)) },
     ];
     return { hotCts, hotPcs, hotTot, coldCts, coldPcs, coldTot, totalPc, hotPct, bands };
   }, [all]);
@@ -1193,14 +1193,14 @@ export default function App() {
                 {pol.flat().map((r, i) => {
                   const hot = isHot(r.av, r.co, r.cl);
                   let band = "—";
-                  if (r.av >= 0.012 && r.av <= 0.013) band = "B1";
-                  else if (r.av >= 0.033 && r.av <= 0.037) band = "B2";
-                  else if (r.av >= 0.078 && r.av <= 0.115) band = "B3a";
-                  else if (r.av >= 0.116 && r.av <= 0.158) band = "B3b";
-                  else if (r.av >= 0.159 && r.av <= 0.200) band = "B3c";
+                  const mm = ctsToMM(r.av);
+                  if (mm >= 1.40 && mm <= 1.49) band = "B1";
+                  else if (mm >= 2.00 && mm <= 2.09) band = "B2";
+                  else if (mm >= 2.70 && mm <= 2.89) band = "B3a";
+                  else if (mm >= 3.30 && mm <= 3.685) band = "B3b";
                   const sI = SHAPES.indexOf(r.sh);
                   return (
-                    <tr key={i} style={{background: hot ? "#f0fdf4" : i % 2 === 0 ? "transparent" : "#f8f9fb"}}>
+                    <tr key={i} style={{background: hot ? "var(--green-bg)" : i % 2 === 0 ? "transparent" : "var(--card2)"}}>
                       <td className="left" style={{fontSize:10}}>{r.seg}</td>
                       <td className="left">{r.co}</td>
                       {def.type === "MB" && <td className="left2">{r.sh}</td>}
@@ -1220,7 +1220,7 @@ export default function App() {
               </tbody></table>
             </div>
             <div style={{padding:"8px 14px",fontSize:10,color:"var(--text3)"}}>
-              Hot bands: B1=0.012-0.013ct · B2=0.033-0.037ct · B3a=0.078-0.115ct (s6) · B3b=0.116-0.158ct (s7) · B3c=0.159-0.200ct (s8).
+              Hot bands (MM-based): B1=1.40-1.49mm · B2=2.00-2.09mm · B3a=2.70-2.89mm · B3b=3.30-3.69mm · Only DEF/G/H × VVS/VS1/VS2.
               Avg Size = Polish CTS / Polish PCS. Polish CTS = Rough CTS × Yield. Polish PCS = Round(Rough PCS × Stone Multiplier).
             </div>
           </div>
@@ -2472,7 +2472,7 @@ export default function App() {
               </tbody></table>
             </div>
             <div style={{padding:"10px 16px",fontSize:11,color:"var(--text3)",borderTop:"1px solid var(--border)"}}>
-              Score = Hot Band % × 3 + Non-Commercial % × 1 + DEF % × 1 + Big Segment (+11) % × 0.5 · Hot bands: 0.012-0.013ct, 0.033-0.037ct, 0.078-0.200ct · Non-commercial = DEF/G/H × VVS/VS1/VS2 only
+              Score = Hot Band % × 3 + Non-Commercial % × 1 + DEF % × 1 + Big Segment (+11) % × 0.5 · Hot bands: 1.40-1.49mm, 2.00-2.09mm, 2.70-2.89mm, 3.30-3.69mm · Non-commercial = DEF/G/H × VVS/VS1/VS2 only
             </div>
           </div>
 
@@ -2597,7 +2597,7 @@ export default function App() {
                     VVS, VS1, VS2 clarities<br/>
                     None / Faint fluorescence<br/>
                     Round shape priority, then Pear/Oval<br/>
-                    All hot band sizes (0.078-0.200ct priority)
+                    All hot band sizes (2.70-2.89mm, 3.30-3.69mm priority)
                   </div>
                 </div>
                 <div style={{background:"var(--amber-bg)",borderRadius:8,padding:12,border:"1px solid var(--border)"}}>
