@@ -2422,49 +2422,60 @@ export default function App() {
             </div>
           </div>
 
-          {/* ═══ AMAY Q1: PARCEL PRIORITY (Hot Band weighted) ═══ */}
+          {/* ═══ Q1: PARCEL PRIORITY (Manufacturable goods based) ═══ */}
           <div className="card" style={{borderLeft:"3px solid var(--amber)"}}>
             <div className="card-hdr">
-              <span className="card-title">Q1: Parcel Priority — Hot Band Weighted Ranking</span>
-              <span style={{fontSize:10,color:"var(--text3)"}}>Highest weight = hot band concentration × non-commercial value</span>
+              <span className="card-title">Q1: Parcel Priority — Manufacturable Goods Ranking</span>
+              <span style={{fontSize:10,color:"var(--text3)"}}>Based on D-H × VVS-VS2 × Rounds+Fancies (manufacturable goods)</span>
+            </div>
+            <div style={{padding:"10px 16px",fontSize:11,color:"var(--amber)",background:"var(--amber-bg)",borderBottom:"1px solid var(--border)"}}>
+              ⚠ Hot band volume is very low across all parcels — most +7+9+11 polished output falls in the 2.90-3.29mm gap (outside demand bands). Priority is based on total manufacturable goods (D-H × VVS-VS2) not hot bands alone.
             </div>
             <div className="overflow-x">
               <table><thead><tr>
                 <th>Rank</th><th style={{textAlign:"left"}}>Parcel</th><th>Type</th><th>Rough CTS</th>
-                <th style={{background:"var(--green-bg)",color:"var(--green)"}}>Hot Band %</th>
-                <th style={{background:"var(--green-bg)",color:"var(--green)"}}>Hot Value $</th>
-                <th>Non-Comm %</th><th>DEF %</th><th>+11 Seg %</th>
-                <th style={{background:"var(--amber-bg)",color:"var(--amber)"}}>Priority Score</th>
+                <th style={{background:"var(--blue-bg)",color:"var(--blue)"}}>Mfg CTS</th>
+                <th style={{background:"var(--blue-bg)",color:"var(--blue)"}}>Mfg Value $</th>
+                <th style={{background:"var(--blue-bg)",color:"var(--blue)"}}>Mfg %</th>
+                <th style={{background:"var(--green-bg)",color:"var(--green)"}}>Hot %</th>
+                <th>DEF %</th>
+                <th style={{background:"var(--amber-bg)",color:"var(--amber)"}}>Score</th>
                 <th>Recommendation</th>
               </tr></thead><tbody>
                 {(() => {
                   const scored = PARCEL_DEFS.map((pDef, pi) => {
                     const p = allParcelPolish[pi]; const pcl = parcels[pi];
+                    // Manufacturable = D-H × VVS-VS2 (no fluo filter)
+                    const mfgRows = p.rows.filter(r => ["DEF","G","H"].includes(r.co) && ["VVS","VS1","VS2"].includes(r.cl));
+                    const mfgCts = mfgRows.reduce((s,r) => s+r.rC, 0);
+                    const mfgVal = mfgRows.reduce((s,r) => s+r.tot, 0);
+                    const mfgPct = p.rC > 0 ? mfgCts / p.rC * 100 : 0;
                     const hotRows = p.rows.filter(r => isHot(r.av, r.co, r.cl));
-                    const hotCts = hotRows.reduce((s,r) => s+r.pC, 0);
-                    const hotVal = hotRows.reduce((s,r) => s+r.tot, 0);
-                    const hotPct = p.pC > 0 ? hotCts / p.pC * 100 : 0;
-                    const ncRows = p.rows.filter(r => !isCommercial(r.co, r.cl));
-                    const ncPct = p.pC > 0 ? ncRows.reduce((s,r)=>s+r.pC,0) / p.pC * 100 : 0;
+                    const hotPct = p.pC > 0 ? hotRows.reduce((s,r)=>s+r.pC,0) / p.pC * 100 : 0;
                     const defRows = p.rows.filter(r => r.co === "DEF");
                     const defPct = p.pC > 0 ? defRows.reduce((s,r)=>s+r.pC,0) / p.pC * 100 : 0;
-                    // +11 segment weight (bigger sizes = higher value)
-                    const seg11 = pDef.segs.includes("+11") ? (pDef.id.includes("79") ? (pDef.type==="SW"?52:43) : 0) : 0;
-                    // Priority score: hot% × 3 + nonComm% × 1 + DEF% × 1 + seg11% × 0.5
-                    const score = hotPct * 3 + ncPct * 1 + defPct * 1 + seg11 * 0.5;
-                    return { pi, pDef, pcl, p, hotPct, hotVal, ncPct, defPct, seg11, score };
+                    // Score: mfg% × 2 + DEF% × 1 + hot% × 1 + SW bonus
+                    const swBonus = pDef.type === "SW" ? 15 : 0;
+                    const bigSeg = pDef.segs.includes("+11") ? 10 : 0;
+                    const score = mfgPct * 2 + defPct * 1 + hotPct * 1 + swBonus + bigSeg;
+                    return { pi, pDef, pcl, p, mfgCts, mfgVal, mfgPct, hotPct, defPct, score };
                   }).sort((a, b) => b.score - a.score);
-                  const recs = ["Chase first — highest hot band + SW premium", "Strong volume play — largest parcel", "Small but all rounds — fill specific orders", "Last priority — falling melee market"];
+                  const recs = [
+                    "Chase first — 100% rounds, best mfg profile, SW premium",
+                    "Strong volume play — largest parcel, good DEF %",
+                    "Small parcel, all rounds — specific orders only",
+                    "Last priority — smallest usable volume"
+                  ];
                   return scored.map((s, rank) => <tr key={s.pDef.id} style={rank===0?{background:"var(--green-bg)"}:{}}>
                     <td style={{fontWeight:700,fontSize:16,color:rank===0?"var(--green)":"var(--text)"}}>{rank+1}</td>
                     <td style={{textAlign:"left",fontWeight:700,color:"var(--blue)"}}>#{s.pcl.number} {s.pDef.label}</td>
                     <td><span className={`badge ${s.pDef.type==="SW"?"badge-blue":"badge-amber"}`} style={{fontSize:9}}>{s.pDef.type}</span></td>
                     <td style={{fontFamily:"'DM Mono',monospace"}}>{f(s.p.rC,1)}</td>
-                    <td style={{background:"var(--green-bg)",fontWeight:700,color:"var(--green)",fontFamily:"'DM Mono',monospace"}}>{s.hotPct.toFixed(1)}%</td>
-                    <td style={{background:"var(--green-bg)",fontFamily:"'DM Mono',monospace"}}>${s.hotVal.toLocaleString()}</td>
-                    <td style={{fontFamily:"'DM Mono',monospace"}}>{s.ncPct.toFixed(1)}%</td>
+                    <td style={{background:"var(--blue-bg)",fontFamily:"'DM Mono',monospace",fontWeight:700}}>{f(s.mfgCts,1)}</td>
+                    <td style={{background:"var(--blue-bg)",fontFamily:"'DM Mono',monospace"}}>${s.mfgVal.toLocaleString()}</td>
+                    <td style={{background:"var(--blue-bg)",fontFamily:"'DM Mono',monospace",fontWeight:700}}>{s.mfgPct.toFixed(0)}%</td>
+                    <td style={{background:"var(--green-bg)",fontFamily:"'DM Mono',monospace",color:"var(--green)"}}>{s.hotPct.toFixed(1)}%</td>
                     <td style={{fontFamily:"'DM Mono',monospace"}}>{s.defPct.toFixed(1)}%</td>
-                    <td style={{fontFamily:"'DM Mono',monospace"}}>{s.seg11}%</td>
                     <td style={{background:"var(--amber-bg)",fontWeight:700,fontFamily:"'DM Mono',monospace",color:"var(--amber)"}}>{s.score.toFixed(0)}</td>
                     <td style={{fontSize:10,textAlign:"left",color:"var(--text2)"}}>{recs[rank] || ""}</td>
                   </tr>);
@@ -2472,7 +2483,7 @@ export default function App() {
               </tbody></table>
             </div>
             <div style={{padding:"10px 16px",fontSize:11,color:"var(--text3)",borderTop:"1px solid var(--border)"}}>
-              Score = Hot Band % × 3 + Non-Commercial % × 1 + DEF % × 1 + Big Segment (+11) % × 0.5 · Hot bands: 1.40-1.49mm, 2.00-2.09mm, 2.70-2.89mm, 3.30-3.69mm · Non-commercial = DEF/G/H × VVS/VS1/VS2 only
+              Mfg = D-H × VVS-VS2 (all shapes, no fluo filter) · Score = Mfg% × 2 + DEF% × 1 + Hot% × 1 + SW bonus + big segment bonus
             </div>
           </div>
 
@@ -2541,16 +2552,17 @@ export default function App() {
             </div>
           </div>
 
-          {/* ═══ AMAY Q4: MANUFACTURE vs SELL AS ROUGH ═══ */}
+          {/* ═══ Q4: MANUFACTURE vs SELL AS ROUGH ═══ */}
           <div className="card" style={{borderLeft:"3px solid var(--purple)"}}>
             <div className="card-hdr">
               <span className="card-title">Q4: Manufacture vs Sell as Rough — Per Parcel Split</span>
+              <span style={{fontSize:10,color:"var(--text3)"}}>Mfg = D-H × VVS-VS2 (all shapes, no fluo filter) · Sell = everything else at 70% of polish</span>
             </div>
             <div className="overflow-x">
               <table><thead><tr>
                 <th style={{textAlign:"left"}}>Parcel</th>
-                <th colSpan={3} style={{background:"var(--green-bg)",color:"var(--green)"}}>Manufacture (Cut & Polish)</th>
-                <th colSpan={3} style={{background:"var(--amber-bg)",color:"var(--amber)"}}>Sell as Rough</th>
+                <th colSpan={3} style={{background:"var(--green-bg)",color:"var(--green)"}}>Manufacture (D-H × VVS-VS2)</th>
+                <th colSpan={3} style={{background:"var(--amber-bg)",color:"var(--amber)"}}>Sell as Rough (70% of polish)</th>
                 <th>Mfg %</th>
               </tr><tr>
                 <th></th>
@@ -2558,19 +2570,17 @@ export default function App() {
                 <th style={{background:"var(--green-bg)",fontSize:9}}>Polish Value</th>
                 <th style={{background:"var(--green-bg)",fontSize:9}}>$/ct Rough</th>
                 <th style={{background:"var(--amber-bg)",fontSize:9}}>Rough CTS</th>
-                <th style={{background:"var(--amber-bg)",fontSize:9}}>Est. Value</th>
+                <th style={{background:"var(--amber-bg)",fontSize:9}}>Sell Value</th>
                 <th style={{background:"var(--amber-bg)",fontSize:9}}>$/ct Rough</th>
                 <th></th>
               </tr></thead><tbody>
                 {PARCEL_DEFS.map((pDef, pi) => {
                   const p = allParcelPolish[pi]; const pcl = parcels[pi];
-                  // Manufacture: DEF/G/H × VVS/VS1/VS2 × None/Faint fluo
-                  const mfgRows = p.rows.filter(r => !isCommercial(r.co, r.cl));
-                  const sellRows = p.rows.filter(r => isCommercial(r.co, r.cl));
+                  const mfgRows = p.rows.filter(r => ["DEF","G","H"].includes(r.co) && ["VVS","VS1","VS2"].includes(r.cl));
+                  const sellRows = p.rows.filter(r => !(["DEF","G","H"].includes(r.co) && ["VVS","VS1","VS2"].includes(r.cl)));
                   const mfgRc = mfgRows.reduce((s,r)=>s+r.rC,0);
                   const mfgVal = mfgRows.reduce((s,r)=>s+r.tot,0);
                   const sellRc = sellRows.reduce((s,r)=>s+r.rC,0);
-                  // Rough sell-off estimate: 70% of polish value (30% discount from polished rates)
                   const sellPolVal = sellRows.reduce((s,r)=>s+r.tot,0);
                   const sellVal = Math.round(sellPolVal * 0.70);
                   const mfgPct = p.rC > 0 ? (mfgRc / p.rC * 100).toFixed(0) : 0;
@@ -2588,28 +2598,72 @@ export default function App() {
               </tbody></table>
             </div>
             <div className="card-body" style={{borderTop:"1px solid var(--border)"}}>
-              <div style={{fontSize:12,fontWeight:700,color:"var(--text)",marginBottom:8}}>Decision Matrix:</div>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
                 <div style={{background:"var(--green-bg)",borderRadius:8,padding:12,border:"1px solid var(--border)"}}>
                   <div style={{fontSize:11,fontWeight:700,color:"var(--green)",marginBottom:6}}>✓ MANUFACTURE</div>
                   <div style={{fontSize:11,color:"var(--text2)",lineHeight:1.6}}>
                     DEF, G, H colors<br/>
                     VVS, VS1, VS2 clarities<br/>
-                    None / Faint fluorescence<br/>
-                    Round shape priority, then Pear/Oval<br/>
-                    All hot band sizes (2.70-2.89mm, 3.30-3.69mm priority)
+                    Rounds + Fancies (all shapes)<br/>
+                    Hot band sizes prioritized (2.70-2.89mm, 3.30-3.69mm)
                   </div>
                 </div>
                 <div style={{background:"var(--amber-bg)",borderRadius:8,padding:12,border:"1px solid var(--border)"}}>
                   <div style={{fontSize:11,fontWeight:700,color:"var(--amber)",marginBottom:6}}>✗ SELL AS ROUGH</div>
                   <div style={{fontSize:11,color:"var(--text2)",lineHeight:1.6}}>
-                    I, JK, L/M, CAPE colors — low polish prices<br/>
-                    SI1, SI2 clarities — margins too thin<br/>
-                    Medium/Strong fluorescence — discount exceeds cutting gain<br/>
-                    Baguette/Marquise in lower colors — no demand<br/>
-                    Est. rough sell-off: 70% of polish value (30% below polished rates)
+                    I, JK, L/M, CAPE colors<br/>
+                    SI1, SI2 clarities (any color)<br/>
+                    Valued at 70% of polished price<br/>
+                    Sell to Surat market or other manufacturers
                   </div>
                 </div>
+              </div>
+            </div>
+          </div>
+
+          {/* ═══ OVER-POLISH OPTIMIZATION ═══ */}
+          <div className="card" style={{borderLeft:"3px solid var(--purple)"}}>
+            <div className="card-hdr">
+              <span className="card-title">Manufacturing Optimization — Over-Polish to Hot Band</span>
+              <span style={{fontSize:10,color:"var(--text3)"}}>Stones just outside hot bands can be intentionally polished smaller to land in demand sizes</span>
+            </div>
+            <div className="card-body">
+              <div style={{fontSize:12,color:"var(--text2)",marginBottom:12}}>
+                Stones that naturally polish to 2.90-2.95mm (just outside Band 3a: 2.70-2.89mm) can be over-polished to ~2.85mm. Weight sacrifice is ~8% but the stone becomes a confirmed-demand hot band size instead of inventory.
+              </div>
+              <div className="overflow-x">
+                <table><thead><tr>
+                  <th style={{textAlign:"left"}}>Parcel</th>
+                  <th>Gap Stones (2.90-3.10mm)</th>
+                  <th>Of which D-H/VVS-VS2</th>
+                  <th>After Over-Polish (-8%)</th>
+                  <th>Target Band</th>
+                </tr></thead><tbody>
+                  {PARCEL_DEFS.map((pDef, pi) => {
+                    const p = allParcelPolish[pi]; const pcl = parcels[pi];
+                    // Find rows where polished avg falls in the 2.90-3.10mm gap
+                    const gapRows = p.rows.filter(r => {
+                      if (!r.av || r.av <= 0) return false;
+                      const mm = ctsToMM(r.av);
+                      return mm >= 2.90 && mm <= 3.10;
+                    });
+                    const gapCts = gapRows.reduce((s,r)=>s+r.pC, 0);
+                    const mfgGap = gapRows.filter(r => ["DEF","G","H"].includes(r.co) && ["VVS","VS1","VS2"].includes(r.cl));
+                    const mfgGapCts = mfgGap.reduce((s,r)=>s+r.pC, 0);
+                    const overPolCts = mfgGapCts * 0.92; // 8% weight sacrifice
+                    return <tr key={pDef.id}>
+                      <td style={{textAlign:"left",fontWeight:700,color:"var(--blue)"}}>#{pcl.number} {pDef.label}</td>
+                      <td style={{fontFamily:"'DM Mono',monospace"}}>{f(gapCts,2)} cts</td>
+                      <td style={{fontFamily:"'DM Mono',monospace",fontWeight:700}}>{f(mfgGapCts,2)} cts</td>
+                      <td style={{fontFamily:"'DM Mono',monospace",color:"var(--green)"}}>{f(overPolCts,2)} cts</td>
+                      <td style={{color:"var(--green)",fontWeight:600}}>→ 2.85mm (Band 3a)</td>
+                    </tr>;
+                  })}
+                </tbody></table>
+              </div>
+              <div style={{marginTop:12,padding:12,background:"var(--card2)",borderRadius:8,fontSize:11,color:"var(--text2)",lineHeight:1.7}}>
+                <strong style={{color:"var(--text)"}}>Break-even point:</strong> Over-polishing is profitable when non-hot sizes sell at ≤85% of PL-A. If non-hot discount is 20%+ (selling at 80% PL-A), estimated gain is ~$2,000 per Lot 91. <br/>
+                <strong style={{color:"var(--text)"}}>Also applies to:</strong> 3.70-3.80mm stones → over-polish to 3.65mm (Band 3b). Only ~3% weight sacrifice.
               </div>
             </div>
           </div>
