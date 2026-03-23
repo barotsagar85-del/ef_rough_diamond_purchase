@@ -50,7 +50,7 @@ function mkPM_broker(shape, baseMap) {
 const PM_PLA = { Round: mkPM_broker("Round", PLA_BASE), "Pear/Oval": mkPM_broker("Pear/Oval", PLA_BASE), Baguette: mkPM_broker("Baguette", PLA_BASE), Marquise: mkPM_broker("Marquise", PLA_BASE) };
 const PM_PLM = { Round: mkPM_broker("Round", PLM_BASE), "Pear/Oval": mkPM_broker("Pear/Oval", PLM_BASE), Baguette: mkPM_broker("Baguette", PLM_BASE), Marquise: mkPM_broker("Marquise", PLM_BASE) };
 
-/* ── PL-B (Amay's Price List V3 — actual granular prices, fancies +10%) ── */
+/* ── PL-A (Amay's Price List V3 — actual granular prices, fancies +10%) ── */
 const PLB_ROUND = {
   s1: {"DEF":{VVS:1348.6,VS1:1077.9,VS2:1077.9,SI1:927.9,SI2:729.0},"G":{VVS:1348.6,VS1:927.9,VS2:927.9,SI1:927.9,SI2:618.6},"H":{VVS:927.9,VS1:927.9,VS2:927.9,SI1:927.9,SI2:742.3},"I":{VVS:1073.5,VS1:894.6,VS2:751.5,SI1:662.0,SI2:501.0},"JK":{VVS:715.7,VS1:626.2,VS2:536.8,SI1:447.3,SI2:357.8},"L/M":{VVS:357.8,VS1:322.1,VS2:304.2,SI1:268.4,SI2:232.6},"CAPE":{VVS:268.4,VS1:250.5,VS2:232.6,SI1:214.7,SI2:196.8}},
   s2: {"DEF":{VVS:1034.1,VS1:847.3,VS2:847.3,SI1:764.1,SI2:600.4},"G":{VVS:1034.1,VS1:764.1,VS2:764.1,SI1:764.1,SI2:509.4},"H":{VVS:764.1,VS1:764.1,VS2:764.1,SI1:764.1,SI2:611.3},"I":{VVS:884.0,VS1:736.6,VS2:618.8,SI1:545.1,SI2:412.5},"JK":{VVS:589.3,VS1:515.6,VS2:442.0,SI1:368.3,SI2:294.6},"L/M":{VVS:294.6,VS1:265.2,VS2:250.4,SI1:221.0,SI2:191.5},"CAPE":{VVS:221.0,VS1:206.2,VS2:191.5,SI1:176.8,SI2:162.1}},
@@ -300,19 +300,32 @@ function buildA(type, segs, pre, pre_mb, def) {
 const f = (v, d = 2) => (v != null && !isNaN(v)) ? Number(v).toFixed(d) : "";
 const fd = (v) => (v != null && !isNaN(v) && v !== 0) ? "$" + Number(v).toLocaleString("en-US", { maximumFractionDigits: 0 }) : "";
 
+/* ── CTS to MM lookup (from Amay's EFI Round Prices mapping) ── */
+const CTS_TO_MM = [
+  [0.001,0.57],[0.002,0.72],[0.003,0.85],[0.004,0.95],[0.005,1.05],[0.006,1.12],[0.007,1.17],[0.008,1.22],
+  [0.009,1.27],[0.010,1.32],[0.011,1.37],[0.012,1.42],[0.013,1.47],[0.014,1.52],[0.016,1.57],[0.018,1.65],
+  [0.021,1.75],[0.025,1.85],[0.029,1.95],[0.035,2.05],[0.039,2.15],[0.044,2.30],[0.052,2.45],[0.069,2.55],
+  [0.074,2.65],[0.078,2.75],[0.086,2.85],[0.095,2.95],[0.108,3.05],[0.116,3.15],[0.135,3.35],[0.146,3.45],
+  [0.159,3.55],[0.175,3.65],[0.200,3.75]
+];
+function ctsToMM(cts) {
+  if (cts <= 0) return 0;
+  if (cts <= CTS_TO_MM[0][0]) return CTS_TO_MM[0][1];
+  if (cts >= CTS_TO_MM[CTS_TO_MM.length-1][0]) return CTS_TO_MM[CTS_TO_MM.length-1][1];
+  for (let i = 0; i < CTS_TO_MM.length - 1; i++) {
+    const [c0, m0] = CTS_TO_MM[i], [c1, m1] = CTS_TO_MM[i+1];
+    if (cts >= c0 && cts <= c1) return m0 + (cts - c0) / (c1 - c0) * (m1 - m0);
+  }
+  return 0;
+}
 const isHot = (avgSize, co, cl) => {
   if (!avgSize || avgSize <= 0) return false;
-  // Only DEF/G/H × VVS/VS1/VS2 × Rounds can be hot (per Amay's demand forecast)
   if (co && cl && isCommercial(co, cl)) return false;
-  // Band 1: 0.012-0.013ct (1.40-1.49mm)
-  if (avgSize >= 0.012 && avgSize <= 0.013) return true;
-  // Band 2: 0.035ct (2.00-2.09mm)
-  if (avgSize >= 0.035 && avgSize < 0.039) return true;
-  // Band 3a: 0.078-0.086ct (2.70-2.89mm)
-  if (avgSize >= 0.078 && avgSize <= 0.089) return true;
-  // GAP: 0.090-0.130ct (2.90-3.29mm) — NOT HOT
-  // Band 3b: 0.135-0.175ct (3.30-3.69mm)
-  if (avgSize >= 0.130 && avgSize <= 0.175) return true;
+  const mm = ctsToMM(avgSize);
+  if (mm >= 1.40 && mm <= 1.49) return true;    // Band 1: 1.40-1.49mm
+  if (mm >= 2.00 && mm <= 2.09) return true;    // Band 2: 2.00-2.09mm
+  if (mm >= 2.70 && mm <= 2.89) return true;    // Band 3a: 2.70-2.89mm
+  if (mm >= 3.30 && mm <= 3.685) return true;   // Band 3b: 3.30-3.69mm
   return false;
 };
 
@@ -472,7 +485,7 @@ export default function App() {
   const [odcPrfs, setOdcPrfs] = useState(() => PARCEL_DEFS.map(d => d.odcPrf));
   const [pm] = useState(() => ({ Round: mkPM("Round"), "Pear/Oval": mkPM("Pear/Oval"), Baguette: mkPM("Baguette"), Marquise: mkPM("Marquise") }));
   const [pmOverrides, setPmOverrides] = useState({});
-  const [pricingMode, setPricingMode] = useState("PL_A"); // "PL_A" (EF PL) | "PL_M" (Market)
+  const [pricingMode, setPricingMode] = useState("PL_A"); // "PL_A" (Amay V3) | "PL_M" (Market)
 
   // Master Summary — bid calculator state
   const [globalLabour, setGlobalLabour] = useState(30); // default $/ct labour
@@ -491,13 +504,13 @@ export default function App() {
   const odcPrf = odcPrfs[activePcl];
   const SEGS = def.segs;
 
-  const activePM = pricingMode === "PL_M" ? PM_PLM : pricingMode === "PL_B" ? PM_PLB : pm;
+  const activePM = pricingMode === "PL_M" ? PM_PLM : PM_PLB;
   const getPM = useCallback((sh, sv, co, cl) => {
     const k = `${activePcl}:${sh}:${sv}:${co}:${cl}`;
     if (pmOverrides[k] !== undefined) return pmOverrides[k];
-    const src = pricingMode === "PL_M" ? PM_PLM : pricingMode === "PL_B" ? PM_PLB : pm;
+    const src = pricingMode === "PL_M" ? PM_PLM : PM_PLB;
     return src[sh]?.[sv]?.[co]?.[cl] || 0;
-  }, [pm, pmOverrides, activePcl, pricingMode]);
+  }, [pmOverrides, activePcl, pricingMode]);
 
   const uPM = (sh, sv, co, cl, v) => {
     const k = `${activePcl}:${sh}:${sv}:${co}:${cl}`;
@@ -586,16 +599,15 @@ export default function App() {
               const av = pP > 0 ? pC / pP : 0;
               const sv = findSv(av);
               const pmKey = `${pi}:${sh}:${sv?.id}:${co}:${cl}`;
-              const activeSrc = pricingMode === "PL_M" ? PM_PLM : pricingMode === "PL_B" ? PM_PLB : pm;
+              const activeSrc = pricingMode === "PL_M" ? PM_PLM : PM_PLB;
               let rt = sv ? (pmOverrides[pmKey] !== undefined ? pmOverrides[pmKey] : (activeSrc[sh]?.[sv.id]?.[co]?.[cl] || 0)) : 0;
               if (av >= 0.052 && pCfg.efDisc > 0) rt = Math.round(rt * (1 - pCfg.efDisc / 100));
               const md = pCfg.fd.med / 100; const sd = pCfg.fd.stg / 100;
               const ef = rt * ((np + fp) + mp * (1 - (md + sd) / 2));
-              // Also compute PL-A (EF PL) and PL-M (Market) values for comparison
-              const rtA_raw = sv ? (pm[sh]?.[sv.id]?.[co]?.[cl] || 0) : 0;
+              // Also compute PL-A (Amay V3) and PL-M (Market) values for comparison
+              const rtA_raw = sv ? (PM_PLB[sh]?.[sv.id]?.[co]?.[cl] || 0) : 0;
               const rtM_raw = sv ? (PM_PLM[sh]?.[sv.id]?.[co]?.[cl] || 0) : 0;
               let rtAd = rtA_raw, rtMd = rtM_raw;
-              if (av >= 0.052 && pCfg.efDisc > 0) { rtAd = Math.round(rtA_raw * (1 - pCfg.efDisc / 100)); rtMd = Math.round(rtM_raw * (1 - pCfg.efDisc / 100)); }
               const efA = rtAd * ((np + fp) + mp * (1 - (md + sd) / 2));
               const efM = rtMd * ((np + fp) + mp * (1 - (md + sd) / 2));
               rows.push({ co, cl, sh, rP, rC, pC, pP, av, tot: Math.round(pC * ef), totA: Math.round(pC * efA), totM: Math.round(pC * efM) });
@@ -612,7 +624,7 @@ export default function App() {
       const hotPct = pC > 0 ? hotCts / pC * 100 : 0;
       return { rC, rP, pC, pP, tot, totA, totM, hotPct, rows };
     });
-  }, [asts, cfgs, flus, pm, pmOverrides, pricingMode]);
+  }, [asts, cfgs, flus, pmOverrides, pricingMode]);
 
   const sum = useMemo(() => {
     const g = {};
@@ -888,7 +900,7 @@ export default function App() {
         </button>
 
         <div style={{display:"flex",alignItems:"center",gap:0,marginLeft:12,background:"rgba(255,255,255,.1)",borderRadius:6,padding:2}}>
-          {[["PL_A","PL-A","#3b82f6"],["PL_B","PL-B","#a855f7"],["PL_M","PL-M","#16a34a"]].map(([k,lbl,clr])=>(
+          {[["PL_A","PL-A","#a855f7"],["PL_M","PL-M","#16a34a"]].map(([k,lbl,clr])=>(
             <button key={k} onClick={()=>setPricingMode(k)} style={{
               padding:"5px 14px",fontSize:10,fontWeight:pricingMode===k?700:500,borderRadius:4,border:"none",cursor:"pointer",
               background:pricingMode===k?clr:"transparent",
@@ -1219,9 +1231,9 @@ export default function App() {
           <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
             <span style={{fontSize:11,color:"var(--text3)"}}>Active:</span>
             <span style={{fontSize:11,fontWeight:700,padding:"3px 10px",borderRadius:4,
-              background:pricingMode==="PL_M"?"var(--green-bg)":pricingMode==="PL_B"?"var(--purple-bg)":"var(--blue-bg)",
-              color:pricingMode==="PL_M"?"var(--green)":pricingMode==="PL_B"?"var(--purple)":"var(--blue)"}}>
-              {pricingMode==="PL_M"?"PL-M (Market +15%)":pricingMode==="PL_B"?"PL-B (Amay V3)":"PL-A (EF Price List)"}
+              background:pricingMode==="PL_M"?"var(--green-bg)":"var(--blue-bg)",
+              color:pricingMode==="PL_M"?"var(--green)":"var(--blue)"}}>
+              {pricingMode==="PL_M"?"PL-M (Market)":"PL-A (Amay V3)"}
             </span>
             <span style={{fontSize:10,color:"var(--text3)"}}>Switch in header bar →</span>
           </div>
@@ -1841,7 +1853,7 @@ export default function App() {
           const getQvPrice = (svId, co, cl) => {
             const k = `qv:${svId}:${co}:${cl}`;
             if (pmOverrides[k] !== undefined) return pmOverrides[k];
-            const src = pricingMode === "PL_M" ? PM_PLM : pricingMode === "PL_B" ? PM_PLB : pm;
+            const src = pricingMode === "PL_M" ? PM_PLM : PM_PLB;
             return src["Round"]?.[svId]?.[co]?.[cl] || 0;
           };
           const setQvPrice = (svId, co, cl, v) => {
@@ -1858,7 +1870,7 @@ export default function App() {
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
               <div>
                 <div style={{fontSize:14,fontWeight:700,color:"var(--text)"}}>Quick View — Combined Polish Output & Pricing</div>
-                <div style={{fontSize:11,color:"var(--text3)"}}>All sizes, colors, clarities · Editable $/ct · Active PL: {pricingMode==="PL_B"?"PL-B":pricingMode==="PL_M"?"PL-M":"PL-A"}</div>
+                <div style={{fontSize:11,color:"var(--text3)"}}>All sizes, colors, clarities · Editable $/ct · Active PL: {pricingMode==="PL_M"?"PL-M":"PL-A"}</div>
               </div>
             </div>
 
@@ -1980,7 +1992,7 @@ export default function App() {
               <div style={{fontSize:11,color:"var(--amber)",marginTop:4}}>⚠ PL-M base prices sourced from round polished broker lists. Fancy shape PL-M (Pear, Baguette, Marquise) are estimated using shape discount factors — actual fancy market data required for accuracy.</div>
             </div>
             {shapes.map(shape => {
-              const plaShape = pm[shape] || {};
+              const plaShape = PM_PLB[shape] || {};
               const plmShape = PM_PLM[shape] || {};
               return <div key={shape} className="card" style={{marginBottom:20}}>
                 <div className="card-hdr" style={{padding:"12px 16px"}}>
@@ -2051,7 +2063,7 @@ export default function App() {
                   </tr></thead>
                   <tbody>
                     {shapes.map(shape => {
-                      const plaShape = pm[shape] || {};
+                      const plaShape = PM_PLB[shape] || {};
                       const plmShape = PM_PLM[shape] || {};
                       let totalA = 0, totalM = 0;
                       const perSieve = SIEVE_RANGES.map(sr => {
@@ -2468,7 +2480,7 @@ export default function App() {
           <div className="card" style={{borderLeft:"3px solid var(--blue)"}}>
             <div className="card-hdr">
               <span className="card-title">Q2: Bid Prices — Breakeven, 10%, 15%, 20% Profitability</span>
-              <span style={{fontSize:10,color:"var(--text3)"}}>Labour: ${globalLabour}/ct · Active PL: {pricingMode==="PL_B"?"PL-B":pricingMode==="PL_M"?"PL-M":"PL-A"}</span>
+              <span style={{fontSize:10,color:"var(--text3)"}}>Labour: ${globalLabour}/ct · Active PL: {pricingMode==="PL_M"?"PL-M":"PL-A"}</span>
             </div>
             <div className="overflow-x">
               <table><thead><tr>
@@ -2602,10 +2614,10 @@ export default function App() {
             </div>
           </div>
 
-          {/* ═══ PL-B vs PL-M PRICE COMPARISON — MAJORITY SIZES ═══ */}
+          {/* ═══ PL-A vs PL-M PRICE COMPARISON — MAJORITY SIZES ═══ */}
           <div className="card" style={{borderLeft:"3px solid var(--blue)"}}>
             <div className="card-hdr">
-              <span className="card-title">PL-B vs PL-M — Price Comparison by Majority Polish Sizes</span>
+              <span className="card-title">PL-A vs PL-M — Price Comparison by Majority Polish Sizes</span>
               <span style={{fontSize:10,color:"var(--text3)"}}>Shows why polish valuations differ between price lists</span>
             </div>
             <div className="card-body" style={{padding:0}}>
@@ -2622,10 +2634,10 @@ export default function App() {
                   sieveGroups[svId].cts += r.pC;
                   sieveGroups[svId].pcs += r.pP;
                   sieveGroups[svId].rows.push(r);
-                  // Get PL-B and PL-M prices for this cell
-                  const plbPrice = PM_PLB[r.sh]?.[svId]?.[r.co]?.[r.cl] || 0;
+                  // Get PL-A and PL-M prices for this cell
+                  const plaPrice = PM_PLB[r.sh]?.[svId]?.[r.co]?.[r.cl] || 0;
                   const plmPrice = PM_PLM[r.sh]?.[svId]?.[r.co]?.[r.cl] || 0;
-                  sieveGroups[svId].totB += r.pC * plbPrice;
+                  sieveGroups[svId].totB += r.pC * plaPrice;
                   sieveGroups[svId].totM += r.pC * plmPrice;
                 }
                 // Sort by weight descending, take top sieves
@@ -2638,7 +2650,7 @@ export default function App() {
                   const avgB = d.cts > 0 ? Math.round(d.totB / d.cts) : 0;
                   const avgM = d.cts > 0 ? Math.round(d.totM / d.cts) : 0;
                   const diff = avgB > 0 ? Math.round((avgM - avgB) / avgB * 100) : 0;
-                  return { name: s ? s.sieve+" ("+s.mm+")" : sv, "PL-B $/ct": avgB, "PL-M $/ct": avgM, cts: d.cts.toFixed(1), diff: diff+"%" };
+                  return { name: s ? s.sieve+" ("+s.mm+")" : sv, "PL-A $/ct": avgB, "PL-M $/ct": avgM, cts: d.cts.toFixed(1), diff: diff+"%" };
                 });
 
                 return <div key={pDef.id} style={{borderBottom:"1px solid var(--border)",padding:"16px 20px"}}>
@@ -2657,7 +2669,7 @@ export default function App() {
                           <YAxis tick={{fontSize:9,fill:CY}} tickFormatter={v => "$"+v} />
                           <Tooltip formatter={(v) => "$"+v+"/ct"} />
                           <Legend wrapperStyle={{fontSize:10}} />
-                          <Bar dataKey="PL-B $/ct" fill="#a855f7" radius={[3,3,0,0]} />
+                          <Bar dataKey="PL-A $/ct" fill="#3b82f6" radius={[3,3,0,0]} />
                           <Bar dataKey="PL-M $/ct" fill="#16a34a" radius={[3,3,0,0]} />
                         </BarChart>
                       </ResponsiveContainer>
@@ -2667,7 +2679,7 @@ export default function App() {
                         <thead><tr>
                           <th style={{textAlign:"left",fontSize:10}}>Sieve</th>
                           <th style={{fontSize:10}}>Pol CTS</th>
-                          <th style={{fontSize:10,color:"var(--purple)"}}>PL-B Avg</th>
+                          <th style={{fontSize:10,color:"var(--blue)"}}>PL-A Avg</th>
                           <th style={{fontSize:10,color:"var(--green)"}}>PL-M Avg</th>
                           <th style={{fontSize:10}}>Diff</th>
                         </tr></thead>
@@ -2675,7 +2687,7 @@ export default function App() {
                           {chartData.map(d => <tr key={d.name}>
                             <td style={{textAlign:"left",fontWeight:600,fontSize:11}}>{d.name}</td>
                             <td style={{fontFamily:"'DM Mono',monospace",fontSize:11}}>{d.cts}</td>
-                            <td style={{fontFamily:"'DM Mono',monospace",fontSize:11,color:"var(--purple)"}}>${d["PL-B $/ct"]}</td>
+                            <td style={{fontFamily:"'DM Mono',monospace",fontSize:11,color:"var(--blue)"}}>${d["PL-A $/ct"]}</td>
                             <td style={{fontFamily:"'DM Mono',monospace",fontSize:11,color:"var(--green)"}}>${d["PL-M $/ct"]}</td>
                             <td style={{fontWeight:700,fontSize:11,fontFamily:"'DM Mono',monospace",
                               color: parseInt(d.diff) > 0 ? "var(--green)" : "var(--red)"
@@ -2689,7 +2701,7 @@ export default function App() {
               })}
             </div>
             <div style={{padding:"10px 16px",fontSize:11,color:"var(--text3)",borderTop:"1px solid var(--border)"}}>
-              PL-B = Amay V3 prices (actual granular rates) · PL-M = Market (broker avg + 20% + 15% flat) · Avg $/ct weighted by polish CTS in each sieve · Top 4 sieves by weight shown per parcel
+              PL-A = Amay V3 prices (actual granular rates) · PL-M = Market (broker avg + 20% + 15% flat) · Avg $/ct weighted by polish CTS in each sieve · Top 4 sieves by weight shown per parcel
             </div>
           </div>
 
