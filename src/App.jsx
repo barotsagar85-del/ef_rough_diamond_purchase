@@ -23,7 +23,7 @@ const SIEVE_RANGES = [
 /* ── BROKER PRICE LISTS (PL-A = EF PL Base, PL-M = Market Avg+20%) ── */
 /* Maps sieve range id → DEF/VVS base price $/ct */
 const PLA_BASE = { s1:419.5, s2:419.5, s3:406.5, s4:387.0, s5:448.8, s6:478.0, s7:517.0, s8:543.0 };
-const PLM_BASE = { s1:499.5, s2:493.0, s3:455.2, s4:434.4, s5:504.0, s6:570.5, s7:655.9, s8:717.1 };
+const PLM_BASE = { s1:574.4, s2:566.9, s3:523.5, s4:499.6, s5:579.6, s6:656.1, s7:754.3, s8:824.7 };
 /* Color group factors (from EF PL analysis): DEF=1.0, GHI=0.75, JK=0.4875 (0.75×0.65) */
 const BRK_COLOR_F = { DEF:1.0, G:0.75, H:0.75, I:0.75, JK:0.4875, "L/M":0.4875, CAPE:0.4875 };
 /* Clarity factors (from EF PL analysis): VVS=1.0, VS1=0.815, VS2=0.693, SI1=0.59, SI2=0.50 */
@@ -49,6 +49,24 @@ function mkPM_broker(shape, baseMap) {
 
 const PM_PLA = { Round: mkPM_broker("Round", PLA_BASE), "Pear/Oval": mkPM_broker("Pear/Oval", PLA_BASE), Baguette: mkPM_broker("Baguette", PLA_BASE), Marquise: mkPM_broker("Marquise", PLA_BASE) };
 const PM_PLM = { Round: mkPM_broker("Round", PLM_BASE), "Pear/Oval": mkPM_broker("Pear/Oval", PLM_BASE), Baguette: mkPM_broker("Baguette", PLM_BASE), Marquise: mkPM_broker("Marquise", PLM_BASE) };
+
+/* ── PL-B (Amay's Price List V3 — actual granular prices, fancies +10%) ── */
+const PLB_ROUND = {
+  s1: {"DEF":{VVS:1348.6,VS1:1077.9,VS2:1077.9,SI1:927.9,SI2:729.0},"G":{VVS:1348.6,VS1:927.9,VS2:927.9,SI1:927.9,SI2:618.6},"H":{VVS:927.9,VS1:927.9,VS2:927.9,SI1:927.9,SI2:742.3},"I":{VVS:1073.5,VS1:894.6,VS2:751.5,SI1:662.0,SI2:501.0},"JK":{VVS:715.7,VS1:626.2,VS2:536.8,SI1:447.3,SI2:357.8},"L/M":{VVS:357.8,VS1:322.1,VS2:304.2,SI1:268.4,SI2:232.6},"CAPE":{VVS:268.4,VS1:250.5,VS2:232.6,SI1:214.7,SI2:196.8}},
+  s2: {"DEF":{VVS:1034.1,VS1:847.3,VS2:847.3,SI1:764.1,SI2:600.4},"G":{VVS:1034.1,VS1:764.1,VS2:764.1,SI1:764.1,SI2:509.4},"H":{VVS:764.1,VS1:764.1,VS2:764.1,SI1:764.1,SI2:611.3},"I":{VVS:884.0,VS1:736.6,VS2:618.8,SI1:545.1,SI2:412.5},"JK":{VVS:589.3,VS1:515.6,VS2:442.0,SI1:368.3,SI2:294.6},"L/M":{VVS:294.6,VS1:265.2,VS2:250.4,SI1:221.0,SI2:191.5},"CAPE":{VVS:221.0,VS1:206.2,VS2:191.5,SI1:176.8,SI2:162.1}},
+  s3: {"DEF":{VVS:842.4,VS1:708.2,VS2:708.2,SI1:593.9,SI2:466.6},"G":{VVS:842.4,VS1:593.9,VS2:593.9,SI1:593.9,SI2:395.9},"H":{VVS:593.9,VS1:593.9,VS2:593.9,SI1:593.9,SI2:475.1},"I":{VVS:688.3,VS1:573.6,VS2:481.8,SI1:424.5,SI2:321.2},"JK":{VVS:458.9,VS1:401.5,VS2:344.2,SI1:286.8,SI2:229.4},"L/M":{VVS:229.4,VS1:206.5,VS2:195.0,SI1:172.1,SI2:150.0},"CAPE":{VVS:172.1,VS1:160.6,VS2:150.0,SI1:150.0,SI2:150.0}},
+  s4: {"DEF":{VVS:833.7,VS1:707.0,VS2:707.0,SI1:575.9,SI2:452.5},"G":{VVS:833.7,VS1:575.9,VS2:575.9,SI1:575.9,SI2:383.9},"H":{VVS:575.9,VS1:575.9,VS2:575.9,SI1:575.9,SI2:460.7},"I":{VVS:666.7,VS1:555.6,VS2:466.7,SI1:411.1,SI2:311.1},"JK":{VVS:444.4,VS1:388.9,VS2:333.3,SI1:277.8,SI2:222.2},"L/M":{VVS:222.2,VS1:200.0,VS2:188.9,SI1:166.7,SI2:150.0},"CAPE":{VVS:166.7,VS1:155.6,VS2:150.0,SI1:150.0,SI2:150.0}},
+  s5: {"DEF":{VVS:829.4,VS1:729.8,VS2:729.8,SI1:590.4,SI2:463.9},"G":{VVS:829.4,VS1:590.4,VS2:590.4,SI1:590.4,SI2:393.6},"H":{VVS:590.4,VS1:590.4,VS2:590.4,SI1:590.4,SI2:472.3},"I":{VVS:682.4,VS1:568.6,VS2:477.7,SI1:420.8,SI2:318.4},"JK":{VVS:454.9,VS1:398.1,VS2:341.2,SI1:284.3,SI2:227.5},"L/M":{VVS:227.5,VS1:204.7,VS2:193.3,SI1:170.6,SI2:150.0},"CAPE":{VVS:170.6,VS1:159.2,VS2:150.0,SI1:150.0,SI2:150.0}},
+  s6: {"DEF":{VVS:948.2,VS1:855.1,VS2:855.1,SI1:699.1,SI2:549.3},"G":{VVS:948.2,VS1:699.1,VS2:699.1,SI1:699.1,SI2:466.1},"H":{VVS:699.1,VS1:699.1,VS2:699.1,SI1:699.1,SI2:559.3},"I":{VVS:808.6,VS1:673.8,VS2:566.0,SI1:498.6,SI2:377.3},"JK":{VVS:539.1,VS1:471.7,VS2:404.3,SI1:336.9,SI2:269.5},"L/M":{VVS:269.5,VS1:242.6,VS2:229.1,SI1:202.2,SI2:175.2},"CAPE":{VVS:202.2,VS1:188.7,VS2:175.2,SI1:161.7,SI2:150.0}},
+  s7: {"DEF":{VVS:1068.4,VS1:962.9,VS2:962.9,SI1:792.4,SI2:622.6},"G":{VVS:1068.4,VS1:792.4,VS2:792.4,SI1:792.4,SI2:528.3},"H":{VVS:792.4,VS1:792.4,VS2:792.4,SI1:792.4,SI2:633.9},"I":{VVS:917.5,VS1:764.6,VS2:642.2,SI1:565.8,SI2:428.2},"JK":{VVS:611.7,VS1:535.2,VS2:458.8,SI1:382.3,SI2:305.8},"L/M":{VVS:305.8,VS1:275.2,VS2:260.0,SI1:229.4,SI2:198.8},"CAPE":{VVS:229.4,VS1:214.1,VS2:198.8,SI1:183.5,SI2:168.2}},
+  s8: {"DEF":{VVS:1200.0,VS1:1100.0,VS2:900.0,SI1:700.0,SI2:550.0},"G":{VVS:1000.0,VS1:800.0,VS2:700.0,SI1:600.0,SI2:400.0},"H":{VVS:800.0,VS1:700.0,VS2:600.0,SI1:500.0,SI2:400.0},"I":{VVS:600.0,VS1:500.0,VS2:420.0,SI1:370.0,SI2:280.0},"JK":{VVS:400.0,VS1:350.0,VS2:300.0,SI1:250.0,SI2:200.0},"L/M":{VVS:200.0,VS1:180.0,VS2:170.0,SI1:150.0,SI2:130.0},"CAPE":{VVS:150.0,VS1:140.0,VS2:130.0,SI1:120.0,SI2:110.0}},
+};
+function mkPLB_fancy(roundPM, mult) {
+  const r = {};
+  for (const sr of SIEVE_RANGES) { r[sr.id] = {}; for (const co of COLORS_AST) { r[sr.id][co] = {}; for (const cl of CLARITIES) { r[sr.id][co][cl] = Math.round((roundPM[sr.id]?.[co]?.[cl] || 0) * mult); } } }
+  return r;
+}
+const PM_PLB = { Round: PLB_ROUND, "Pear/Oval": mkPLB_fancy(PLB_ROUND, 1.10), Baguette: mkPLB_fancy(PLB_ROUND, 1.10), Marquise: mkPLB_fancy(PLB_ROUND, 1.10) };
 
 const EF_PL = [
   {cts:0.001,b1:5210,b2:4000,b3:3700,b4:2405},{cts:0.001,b1:5210,b2:4000,b3:3700,b4:2405},
@@ -316,7 +334,7 @@ const css = `
   --text: #1a1d23; --text2: #4b5060; --text3: #8690a2;
   --blue: #2563eb; --blue-bg: #eff4ff; --green: #16a34a; --green-bg: #ecfdf5;
   --red: #dc2626; --red-bg: #fef2f2; --amber: #d97706; --amber-bg: #fffbeb;
-  --purple: #7c3aed;
+  --purple: #7c3aed; --purple-bg: #f5f3ff;
   --yellow-input: #fffde7; --yellow-border: #e5d85c;
   --hdr-bg: linear-gradient(135deg, #1e3a5f, #162a45); --hdr-text: #fff; --hdr-sub: rgba(255,255,255,.55);
   --shadow: 0 1px 4px rgba(0,0,0,.06);
@@ -327,7 +345,7 @@ const css = `
   --text: #e2e5ea; --text2: #a0a8b8; --text3: #6b7385;
   --blue: #60a5fa; --blue-bg: rgba(96,165,250,.12); --green: #4ade80; --green-bg: rgba(74,222,128,.1);
   --red: #f87171; --red-bg: rgba(248,113,113,.1); --amber: #fbbf24; --amber-bg: rgba(251,191,36,.1);
-  --purple: #a78bfa;
+  --purple: #a78bfa; --purple-bg: rgba(167,139,250,.1);
   --yellow-input: #2a2815; --yellow-border: #5c5320;
   --hdr-bg: linear-gradient(135deg, #111827, #0f172a); --hdr-text: #f1f5f9; --hdr-sub: rgba(255,255,255,.4);
   --shadow: 0 1px 4px rgba(0,0,0,.3);
@@ -436,10 +454,12 @@ export default function App() {
   const [parcels, setParcels] = useState(() => PARCEL_DEFS.map(d => ({
     ...d.parcel, type: d.type, segs: d.segInfo
   })));
-  const [cfgs, setCfgs] = useState(() => PARCEL_DEFS.map(() => ({
-    yld: { Round: 0.43, "Pear/Oval": 0.45, Baguette: 0.45, Marquise: 0.45 },
-    mult: [[1.05,1.15,1.2],[1.10,1.15,1.2],[1.15,1.20,1.25],[1.10,1.15,1.2]],
-    fd: { med:10, stg:25 }, efDisc: 15
+  const [cfgs, setCfgs] = useState(() => PARCEL_DEFS.map(d => ({
+    yld: d.type === "SW"
+      ? { Round: 0.40, "Pear/Oval": 0.45, Baguette: 0.45, Marquise: 0.45 }
+      : { Round: 0.38, "Pear/Oval": 0.41, Baguette: 0.41, Marquise: 0.41 },
+    mult: [[1,1,1],[1,1,1],[1,1,1],[1,1,1]],
+    fd: { med:10, stg:25 }, efDisc: 0
   })));
   const [flus, setFlus] = useState(() => PARCEL_DEFS.map(d => d.flu));
   const [asts, setAsts] = useState(() => PARCEL_DEFS.map(d => buildA(d.type, d.segs, d.pre, d.pre_mb, d)));
@@ -465,11 +485,11 @@ export default function App() {
   const odcPrf = odcPrfs[activePcl];
   const SEGS = def.segs;
 
-  const activePM = pricingMode === "PL_M" ? PM_PLM : pm; // PL_A uses original EF PL
+  const activePM = pricingMode === "PL_M" ? PM_PLM : pricingMode === "PL_B" ? PM_PLB : pm;
   const getPM = useCallback((sh, sv, co, cl) => {
     const k = `${activePcl}:${sh}:${sv}:${co}:${cl}`;
     if (pmOverrides[k] !== undefined) return pmOverrides[k];
-    const src = pricingMode === "PL_M" ? PM_PLM : pm;
+    const src = pricingMode === "PL_M" ? PM_PLM : pricingMode === "PL_B" ? PM_PLB : pm;
     return src[sh]?.[sv]?.[co]?.[cl] || 0;
   }, [pm, pmOverrides, activePcl, pricingMode]);
 
@@ -560,7 +580,7 @@ export default function App() {
               const av = pP > 0 ? pC / pP : 0;
               const sv = findSv(av);
               const pmKey = `${pi}:${sh}:${sv?.id}:${co}:${cl}`;
-              const activeSrc = pricingMode === "PL_M" ? PM_PLM : pm;
+              const activeSrc = pricingMode === "PL_M" ? PM_PLM : pricingMode === "PL_B" ? PM_PLB : pm;
               let rt = sv ? (pmOverrides[pmKey] !== undefined ? pmOverrides[pmKey] : (activeSrc[sh]?.[sv.id]?.[co]?.[cl] || 0)) : 0;
               if (av >= 0.052 && pCfg.efDisc > 0) rt = Math.round(rt * (1 - pCfg.efDisc / 100));
               const md = pCfg.fd.med / 100; const sd = pCfg.fd.stg / 100;
@@ -862,7 +882,7 @@ export default function App() {
         </button>
 
         <div style={{display:"flex",alignItems:"center",gap:0,marginLeft:12,background:"rgba(255,255,255,.1)",borderRadius:6,padding:2}}>
-          {[["PL_A","PL-A","#3b82f6"],["PL_M","PL-M (Market)","#16a34a"]].map(([k,lbl,clr])=>(
+          {[["PL_A","PL-A","#3b82f6"],["PL_B","PL-B","#a855f7"],["PL_M","PL-M","#16a34a"]].map(([k,lbl,clr])=>(
             <button key={k} onClick={()=>setPricingMode(k)} style={{
               padding:"5px 14px",fontSize:10,fontWeight:pricingMode===k?700:500,borderRadius:4,border:"none",cursor:"pointer",
               background:pricingMode===k?clr:"transparent",
@@ -935,9 +955,6 @@ export default function App() {
               <div className="row" style={{marginTop:12}}>
                 <div className="field"><span className="lbl">Med Fluo Disc %</span><NI value={cfg.fd.med} onChange={v => setCfg(c => ({...c, fd:{...c.fd, med: v === "" ? 0 : parseFloat(v) || 0}}))} /></div>
                 <div className="field"><span className="lbl">Stg Fluo Disc %</span><NI value={cfg.fd.stg} onChange={v => setCfg(c => ({...c, fd:{...c.fd, stg: v === "" ? 0 : parseFloat(v) || 0}}))} /></div>
-                <div style={{width:1,background:"var(--border)",margin:"0 6px"}}></div>
-                <div className="field"><span className="lbl" style={{color:"var(--red)"}}>EF PL Disc % (0.052ct+)</span>
-                  <NI value={cfg.efDisc} onChange={v => setCfg(c => ({...c, efDisc: v === "" ? 0 : parseFloat(v) || 0}))} className="ni" style={{borderColor:"#e5a0a0",background:"#fff5f5",color:"var(--red)"}} /></div>
               </div>
             </div>
           </div>
@@ -982,8 +999,8 @@ export default function App() {
           const a3 = sp?.tot > 0 ? sp.c3/sp.tot*100 : 0;
           const odcChartData = o ? [
             { name: "1 Col (DEF)", odc: o.c1, assort: Math.round(a1*10)/10 },
-            { name: "2 Col (GHI)", odc: o.c2, assort: Math.round(a2*10)/10 },
-            { name: "3 Col (JK+)", odc: o.c3, assort: Math.round(a3*10)/10 },
+            { name: "2 Col (GH)", odc: o.c2, assort: Math.round(a2*10)/10 },
+            { name: "3 Col (IJK+)", odc: o.c3, assort: Math.round(a3*10)/10 },
           ] : [];
 
           return <>
@@ -1007,14 +1024,14 @@ export default function App() {
           {o && sp && sp.tot > 0 && <div className="card">
             <div className="card-hdr">
               <span className="card-title">ODC Profile vs Assortment — {SEGS[sg]}</span>
-              <span style={{fontSize:10,color:"var(--text3)"}}>1 Col = DEF · 2 Col = G+H+I · 3 Col = JK+LM+CAPE</span>
+              <span style={{fontSize:10,color:"var(--text3)"}}>1 Col = DEF · 2 Col = G+H · 3 Col = I+JK+LM+CAPE</span>
             </div>
             <div style={{display:"flex",gap:16,flexWrap:"wrap"}}>
               <div style={{flex:"1 1 300px",padding:"12px 14px"}}>
                 <table><thead><tr>
                   <th style={{textAlign:"left"}}>Group</th><th>ODC %</th><th>Assortment %</th><th>Variance</th>
                 </tr></thead><tbody>
-                  {[["1 Col (DEF)", o.c1, a1],["2 Col (GHI)", o.c2, a2],["3 Col (JK+)", o.c3, a3]].map(([label, odcVal, astVal]) => {
+                  {[["1 Col (DEF)", o.c1, a1],["2 Col (GH)", o.c2, a2],["3 Col (IJK+)", o.c3, a3]].map(([label, odcVal, astVal]) => {
                     const v = astVal - odcVal;
                     const vc = Math.abs(v) <= 3 ? "var-green" : Math.abs(v) <= 8 ? "var-amber" : "var-red";
                     return (<tr key={label}>
@@ -1196,9 +1213,9 @@ export default function App() {
           <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
             <span style={{fontSize:11,color:"var(--text3)"}}>Active:</span>
             <span style={{fontSize:11,fontWeight:700,padding:"3px 10px",borderRadius:4,
-              background:pricingMode==="PL_M"?"var(--green-bg)":"var(--blue-bg)",
-              color:pricingMode==="PL_M"?"var(--green)":"var(--blue)"}}>
-              {pricingMode==="PL_M"?"PL-M (Surat Market +20%)":"PL-A (EF Price List)"}
+              background:pricingMode==="PL_M"?"var(--green-bg)":pricingMode==="PL_B"?"var(--purple-bg)":"var(--blue-bg)",
+              color:pricingMode==="PL_M"?"var(--green)":pricingMode==="PL_B"?"var(--purple)":"var(--blue)"}}>
+              {pricingMode==="PL_M"?"PL-M (Market +15%)":pricingMode==="PL_B"?"PL-B (Amay V3)":"PL-A (EF Price List)"}
             </span>
             <span style={{fontSize:10,color:"var(--text3)"}}>Switch in header bar →</span>
           </div>
@@ -2234,26 +2251,286 @@ export default function App() {
             </div>
           </div>
 
-          <div className="chart-wrap" style={{marginTop:14}}>
-            <div className="chart-box" style={{flex:"1 1 100%"}}>
-              <div className="chart-title">Bid Price vs Last Sold — All Parcels</div>
-              <ResponsiveContainer width="100%" height={260}>
-                <BarChart data={PARCEL_DEFS.map((pDef, pi) => {
+          {/* ═══ AMAY Q1: PARCEL PRIORITY (Hot Band weighted) ═══ */}
+          <div className="card" style={{borderLeft:"3px solid var(--amber)"}}>
+            <div className="card-hdr">
+              <span className="card-title">Q1: Parcel Priority — Hot Band Weighted Ranking</span>
+              <span style={{fontSize:10,color:"var(--text3)"}}>Highest weight = hot band concentration × non-commercial value</span>
+            </div>
+            <div className="overflow-x">
+              <table><thead><tr>
+                <th>Rank</th><th style={{textAlign:"left"}}>Parcel</th><th>Type</th><th>Rough CTS</th>
+                <th style={{background:"var(--green-bg)",color:"var(--green)"}}>Hot Band %</th>
+                <th style={{background:"var(--green-bg)",color:"var(--green)"}}>Hot Value $</th>
+                <th>Non-Comm %</th><th>DEF %</th><th>+11 Seg %</th>
+                <th style={{background:"var(--amber-bg)",color:"var(--amber)"}}>Priority Score</th>
+                <th>Recommendation</th>
+              </tr></thead><tbody>
+                {(() => {
+                  const scored = PARCEL_DEFS.map((pDef, pi) => {
+                    const p = allParcelPolish[pi]; const pcl = parcels[pi];
+                    const hotRows = p.rows.filter(r => isHot(r.av, r.co, r.cl));
+                    const hotCts = hotRows.reduce((s,r) => s+r.pC, 0);
+                    const hotVal = hotRows.reduce((s,r) => s+r.tot, 0);
+                    const hotPct = p.pC > 0 ? hotCts / p.pC * 100 : 0;
+                    const ncRows = p.rows.filter(r => !isCommercial(r.co, r.cl));
+                    const ncPct = p.pC > 0 ? ncRows.reduce((s,r)=>s+r.pC,0) / p.pC * 100 : 0;
+                    const defRows = p.rows.filter(r => r.co === "DEF");
+                    const defPct = p.pC > 0 ? defRows.reduce((s,r)=>s+r.pC,0) / p.pC * 100 : 0;
+                    // +11 segment weight (bigger sizes = higher value)
+                    const seg11 = pDef.segs.includes("+11") ? (pDef.id.includes("79") ? (pDef.type==="SW"?52:43) : 0) : 0;
+                    // Priority score: hot% × 3 + nonComm% × 1 + DEF% × 1 + seg11% × 0.5
+                    const score = hotPct * 3 + ncPct * 1 + defPct * 1 + seg11 * 0.5;
+                    return { pi, pDef, pcl, p, hotPct, hotVal, ncPct, defPct, seg11, score };
+                  }).sort((a, b) => b.score - a.score);
+                  const recs = ["Chase first — highest hot band + SW premium", "Strong volume play — largest parcel", "Small but all rounds — fill specific orders", "Last priority — falling melee market"];
+                  return scored.map((s, rank) => <tr key={s.pDef.id} style={rank===0?{background:"var(--green-bg)"}:{}}>
+                    <td style={{fontWeight:700,fontSize:16,color:rank===0?"var(--green)":"var(--text)"}}>{rank+1}</td>
+                    <td style={{textAlign:"left",fontWeight:700,color:"var(--blue)"}}>#{s.pcl.number} {s.pDef.label}</td>
+                    <td><span className={`badge ${s.pDef.type==="SW"?"badge-blue":"badge-amber"}`} style={{fontSize:9}}>{s.pDef.type}</span></td>
+                    <td style={{fontFamily:"'DM Mono',monospace"}}>{f(s.p.rC,1)}</td>
+                    <td style={{background:"var(--green-bg)",fontWeight:700,color:"var(--green)",fontFamily:"'DM Mono',monospace"}}>{s.hotPct.toFixed(1)}%</td>
+                    <td style={{background:"var(--green-bg)",fontFamily:"'DM Mono',monospace"}}>${s.hotVal.toLocaleString()}</td>
+                    <td style={{fontFamily:"'DM Mono',monospace"}}>{s.ncPct.toFixed(1)}%</td>
+                    <td style={{fontFamily:"'DM Mono',monospace"}}>{s.defPct.toFixed(1)}%</td>
+                    <td style={{fontFamily:"'DM Mono',monospace"}}>{s.seg11}%</td>
+                    <td style={{background:"var(--amber-bg)",fontWeight:700,fontFamily:"'DM Mono',monospace",color:"var(--amber)"}}>{s.score.toFixed(0)}</td>
+                    <td style={{fontSize:10,textAlign:"left",color:"var(--text2)"}}>{recs[rank] || ""}</td>
+                  </tr>);
+                })()}
+              </tbody></table>
+            </div>
+            <div style={{padding:"10px 16px",fontSize:11,color:"var(--text3)",borderTop:"1px solid var(--border)"}}>
+              Score = Hot Band % × 3 + Non-Commercial % × 1 + DEF % × 1 + Big Segment (+11) % × 0.5 · Hot bands: 0.012-0.013ct, 0.033-0.037ct, 0.078-0.200ct · Non-commercial = DEF/G/H × VVS/VS1/VS2 only
+            </div>
+          </div>
+
+          {/* ═══ AMAY Q2: BID PRICES AT BREAKEVEN, 10%, 15%, 20% ═══ */}
+          <div className="card" style={{borderLeft:"3px solid var(--blue)"}}>
+            <div className="card-hdr">
+              <span className="card-title">Q2: Bid Prices — Breakeven, 10%, 15%, 20% Profitability</span>
+              <span style={{fontSize:10,color:"var(--text3)"}}>Labour: ${globalLabour}/ct · Active PL: {pricingMode==="PL_B"?"PL-B":pricingMode==="PL_M"?"PL-M":"PL-A"}</span>
+            </div>
+            <div className="overflow-x">
+              <table><thead><tr>
+                <th style={{textAlign:"left"}}>Parcel</th><th>Rough CTS</th><th>Polish Value</th><th>Pol $/ct R</th>
+                <th style={{background:"var(--red-bg)"}}>Breakeven</th>
+                <th style={{background:"var(--amber-bg)"}}>10% Profit</th>
+                <th style={{background:"var(--blue-bg)"}}>15% Profit</th>
+                <th style={{background:"var(--green-bg)"}}>20% Profit</th>
+                <th>Last Sold</th>
+                <th>vs Last @10%</th><th>vs Last @15%</th><th>vs Last @20%</th>
+              </tr></thead><tbody>
+                {PARCEL_DEFS.map((pDef, pi) => {
                   const p = allParcelPolish[pi]; const pcl = parcels[pi];
-                  const roughPerCt = p.rC > 0 ? p.tot / p.rC : 0;
-                  const bid = calcBid(p.tot, p.rC, getLabour(pi), getProfit(pi));
-                  return { name: "#"+pcl.number+" "+pDef.type, bid: Math.round(bid), lastSold: parseFloat(pcl.lastSold) || 0, roughPerCt: Math.round(roughPerCt) };
-                })} barGap={8}>
-                  <CartesianGrid strokeDasharray="3 3" stroke={CG} />
-                  <XAxis dataKey="name" tick={{fontSize:10,fill:CX}} />
-                  <YAxis tick={{fontSize:10,fill:CY}} tickFormatter={v => "$"+v} />
-                  <Tooltip formatter={(v) => "$"+Number(v).toLocaleString()} />
-                  <Legend wrapperStyle={{fontSize:11}} />
-                  <Bar dataKey="roughPerCt" name="Max $/ct (before costs)" fill="#94a3b8" radius={[4,4,0,0]} />
-                  <Bar dataKey="lastSold" name="Last Sold $/ct" fill="#f59e0b" radius={[4,4,0,0]} />
-                  <Bar dataKey="bid" name="Your Bid $/ct" fill="#16a34a" radius={[4,4,0,0]} />
-                </BarChart>
-              </ResponsiveContainer>
+                  const bBE = calcBid(p.tot, p.rC, globalLabour, 0);
+                  const b10 = calcBid(p.tot, p.rC, globalLabour, 10);
+                  const b15 = calcBid(p.tot, p.rC, globalLabour, 15);
+                  const b20 = calcBid(p.tot, p.rC, globalLabour, 20);
+                  const ls = parseFloat(pcl.lastSold) || 0;
+                  const vs = (b, l) => l > 0 ? ((b/l-1)*100).toFixed(0) : "—";
+                  return <tr key={pDef.id}>
+                    <td style={{textAlign:"left",fontWeight:700,color:"var(--blue)"}}>#{pcl.number} {pDef.label}</td>
+                    <td style={{fontFamily:"'DM Mono',monospace"}}>{f(p.rC,1)}</td>
+                    <td style={{fontFamily:"'DM Mono',monospace"}}>${p.tot.toLocaleString()}</td>
+                    <td style={{fontFamily:"'DM Mono',monospace"}}>${p.rC>0?Math.round(p.tot/p.rC):0}</td>
+                    <td style={{background:"var(--red-bg)",fontWeight:700,fontFamily:"'DM Mono',monospace"}}>${Math.round(bBE)}</td>
+                    <td style={{background:"var(--amber-bg)",fontWeight:700,fontFamily:"'DM Mono',monospace"}}>${Math.round(b10)}</td>
+                    <td style={{background:"var(--blue-bg)",fontWeight:700,fontFamily:"'DM Mono',monospace"}}>${Math.round(b15)}</td>
+                    <td style={{background:"var(--green-bg)",fontWeight:700,fontFamily:"'DM Mono',monospace"}}>${Math.round(b20)}</td>
+                    <td style={{fontWeight:600}}>${ls}</td>
+                    <td style={{color:b10>ls?"var(--green)":"var(--red)",fontWeight:600}}>{vs(b10,ls)}%</td>
+                    <td style={{color:b15>ls?"var(--green)":"var(--red)",fontWeight:600}}>{vs(b15,ls)}%</td>
+                    <td style={{color:b20>ls?"var(--green)":"var(--red)",fontWeight:600}}>{vs(b20,ls)}%</td>
+                  </tr>;
+                })}
+                {(() => {
+                  const tRc = allParcelPolish.reduce((s,p)=>s+p.rC,0);
+                  const tTot = allParcelPolish.reduce((s,p)=>s+p.tot,0);
+                  const bBE = calcBid(tTot, tRc, globalLabour, 0);
+                  const b10 = calcBid(tTot, tRc, globalLabour, 10);
+                  const b15 = calcBid(tTot, tRc, globalLabour, 15);
+                  const b20 = calcBid(tTot, tRc, globalLabour, 20);
+                  return <tr style={{fontWeight:700,borderTop:"2px solid var(--border2)"}}>
+                    <td style={{textAlign:"left"}}>BLENDED</td>
+                    <td style={{fontFamily:"'DM Mono',monospace"}}>{f(tRc,1)}</td>
+                    <td style={{fontFamily:"'DM Mono',monospace"}}>${tTot.toLocaleString()}</td>
+                    <td style={{fontFamily:"'DM Mono',monospace"}}>${tRc>0?Math.round(tTot/tRc):0}</td>
+                    <td style={{background:"var(--red-bg)",fontFamily:"'DM Mono',monospace"}}>${Math.round(bBE)}</td>
+                    <td style={{background:"var(--amber-bg)",fontFamily:"'DM Mono',monospace"}}>${Math.round(b10)}</td>
+                    <td style={{background:"var(--blue-bg)",fontFamily:"'DM Mono',monospace"}}>${Math.round(b15)}</td>
+                    <td style={{background:"var(--green-bg)",fontFamily:"'DM Mono',monospace"}}>${Math.round(b20)}</td>
+                    <td colSpan={4}>—</td>
+                  </tr>;
+                })()}
+              </tbody></table>
+            </div>
+            <div style={{padding:"10px 16px",fontSize:11,color:"var(--text3)",borderTop:"1px solid var(--border)"}}>
+              Bid = ((Polish Value − Labour × Rough CTS) / Rough CTS) × (1 − Profit%) · If bid {">"} last sold = green (room to bid higher), red = need to lower expectations or check assumptions
+            </div>
+          </div>
+
+          {/* ═══ AMAY Q4: MANUFACTURE vs SELL AS ROUGH ═══ */}
+          <div className="card" style={{borderLeft:"3px solid var(--purple)"}}>
+            <div className="card-hdr">
+              <span className="card-title">Q4: Manufacture vs Sell as Rough — Per Parcel Split</span>
+            </div>
+            <div className="overflow-x">
+              <table><thead><tr>
+                <th style={{textAlign:"left"}}>Parcel</th>
+                <th colSpan={3} style={{background:"var(--green-bg)",color:"var(--green)"}}>Manufacture (Cut & Polish)</th>
+                <th colSpan={3} style={{background:"var(--amber-bg)",color:"var(--amber)"}}>Sell as Rough</th>
+                <th>Mfg %</th>
+              </tr><tr>
+                <th></th>
+                <th style={{background:"var(--green-bg)",fontSize:9}}>Rough CTS</th>
+                <th style={{background:"var(--green-bg)",fontSize:9}}>Polish Value</th>
+                <th style={{background:"var(--green-bg)",fontSize:9}}>$/ct Rough</th>
+                <th style={{background:"var(--amber-bg)",fontSize:9}}>Rough CTS</th>
+                <th style={{background:"var(--amber-bg)",fontSize:9}}>Est. Value</th>
+                <th style={{background:"var(--amber-bg)",fontSize:9}}>$/ct Rough</th>
+                <th></th>
+              </tr></thead><tbody>
+                {PARCEL_DEFS.map((pDef, pi) => {
+                  const p = allParcelPolish[pi]; const pcl = parcels[pi];
+                  // Manufacture: DEF/G/H × VVS/VS1/VS2 × None/Faint fluo
+                  const mfgRows = p.rows.filter(r => !isCommercial(r.co, r.cl));
+                  const sellRows = p.rows.filter(r => isCommercial(r.co, r.cl));
+                  const mfgRc = mfgRows.reduce((s,r)=>s+r.rC,0);
+                  const mfgVal = mfgRows.reduce((s,r)=>s+r.tot,0);
+                  const sellRc = sellRows.reduce((s,r)=>s+r.rC,0);
+                  // Rough sell-off estimate: 70% of polish value (30% discount from polished rates)
+                  const sellPolVal = sellRows.reduce((s,r)=>s+r.tot,0);
+                  const sellVal = Math.round(sellPolVal * 0.70);
+                  const mfgPct = p.rC > 0 ? (mfgRc / p.rC * 100).toFixed(0) : 0;
+                  return <tr key={pDef.id}>
+                    <td style={{textAlign:"left",fontWeight:700,color:"var(--blue)"}}>#{pcl.number} {pDef.label}</td>
+                    <td style={{background:"var(--green-bg)",fontFamily:"'DM Mono',monospace"}}>{f(mfgRc,1)}</td>
+                    <td style={{background:"var(--green-bg)",fontFamily:"'DM Mono',monospace",fontWeight:700}}>${mfgVal.toLocaleString()}</td>
+                    <td style={{background:"var(--green-bg)",fontFamily:"'DM Mono',monospace"}}>${mfgRc>0?Math.round(mfgVal/mfgRc):0}</td>
+                    <td style={{background:"var(--amber-bg)",fontFamily:"'DM Mono',monospace"}}>{f(sellRc,1)}</td>
+                    <td style={{background:"var(--amber-bg)",fontFamily:"'DM Mono',monospace"}}>${sellVal.toLocaleString()}</td>
+                    <td style={{background:"var(--amber-bg)",fontFamily:"'DM Mono',monospace"}}>${sellRc>0?Math.round(sellVal/sellRc):0}</td>
+                    <td style={{fontWeight:700,color:"var(--green)"}}>{mfgPct}%</td>
+                  </tr>;
+                })}
+              </tbody></table>
+            </div>
+            <div className="card-body" style={{borderTop:"1px solid var(--border)"}}>
+              <div style={{fontSize:12,fontWeight:700,color:"var(--text)",marginBottom:8}}>Decision Matrix:</div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+                <div style={{background:"var(--green-bg)",borderRadius:8,padding:12,border:"1px solid var(--border)"}}>
+                  <div style={{fontSize:11,fontWeight:700,color:"var(--green)",marginBottom:6}}>✓ MANUFACTURE</div>
+                  <div style={{fontSize:11,color:"var(--text2)",lineHeight:1.6}}>
+                    DEF, G, H colors<br/>
+                    VVS, VS1, VS2 clarities<br/>
+                    None / Faint fluorescence<br/>
+                    Round shape priority, then Pear/Oval<br/>
+                    All hot band sizes (0.078-0.200ct priority)
+                  </div>
+                </div>
+                <div style={{background:"var(--amber-bg)",borderRadius:8,padding:12,border:"1px solid var(--border)"}}>
+                  <div style={{fontSize:11,fontWeight:700,color:"var(--amber)",marginBottom:6}}>✗ SELL AS ROUGH</div>
+                  <div style={{fontSize:11,color:"var(--text2)",lineHeight:1.6}}>
+                    I, JK, L/M, CAPE colors — low polish prices<br/>
+                    SI1, SI2 clarities — margins too thin<br/>
+                    Medium/Strong fluorescence — discount exceeds cutting gain<br/>
+                    Baguette/Marquise in lower colors — no demand<br/>
+                    Est. rough sell-off: 70% of polish value (30% below polished rates)
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* ═══ PL-B vs PL-M PRICE COMPARISON — MAJORITY SIZES ═══ */}
+          <div className="card" style={{borderLeft:"3px solid var(--blue)"}}>
+            <div className="card-hdr">
+              <span className="card-title">PL-B vs PL-M — Price Comparison by Majority Polish Sizes</span>
+              <span style={{fontSize:10,color:"var(--text3)"}}>Shows why polish valuations differ between price lists</span>
+            </div>
+            <div className="card-body" style={{padding:0}}>
+              {PARCEL_DEFS.map((pDef, pi) => {
+                const p = allParcelPolish[pi]; const pcl = parcels[pi];
+                // Group polish rows by sieve to find majority sizes
+                const sieveGroups = {};
+                for (const r of p.rows) {
+                  if (r.pC <= 0 || !r.av || r.av <= 0) continue;
+                  const svObj = findSv(r.av);
+                  if (!svObj) continue;
+                  const svId = svObj.id;
+                  if (!sieveGroups[svId]) sieveGroups[svId] = { cts: 0, pcs: 0, totB: 0, totM: 0, rows: [] };
+                  sieveGroups[svId].cts += r.pC;
+                  sieveGroups[svId].pcs += r.pP;
+                  sieveGroups[svId].rows.push(r);
+                  // Get PL-B and PL-M prices for this cell
+                  const plbPrice = PM_PLB[r.sh]?.[svId]?.[r.co]?.[r.cl] || 0;
+                  const plmPrice = PM_PLM[r.sh]?.[svId]?.[r.co]?.[r.cl] || 0;
+                  sieveGroups[svId].totB += r.pC * plbPrice;
+                  sieveGroups[svId].totM += r.pC * plmPrice;
+                }
+                // Sort by weight descending, take top sieves
+                const sorted = Object.entries(sieveGroups).sort((a,b) => b[1].cts - a[1].cts);
+                const topSieves = sorted.slice(0, 4);
+                const sr = (id) => SIEVE_RANGES.find(s => s.id === id);
+                // Chart data for this parcel
+                const chartData = topSieves.map(([sv, d]) => {
+                  const s = sr(sv);
+                  const avgB = d.cts > 0 ? Math.round(d.totB / d.cts) : 0;
+                  const avgM = d.cts > 0 ? Math.round(d.totM / d.cts) : 0;
+                  const diff = avgB > 0 ? Math.round((avgM - avgB) / avgB * 100) : 0;
+                  return { name: s ? s.sieve+" ("+s.mm+")" : sv, "PL-B $/ct": avgB, "PL-M $/ct": avgM, cts: d.cts.toFixed(1), diff: diff+"%" };
+                });
+
+                return <div key={pDef.id} style={{borderBottom:"1px solid var(--border)",padding:"16px 20px"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+                    <div>
+                      <span style={{fontWeight:700,color:"var(--blue)"}}>#{pcl.number} {pDef.label}</span>
+                      <span style={{fontSize:11,color:"var(--text3)",marginLeft:8}}>{pDef.type} · {f(p.rC,1)} cts rough</span>
+                    </div>
+                  </div>
+                  <div style={{display:"flex",gap:16,alignItems:"flex-start"}}>
+                    <div style={{flex:"1 1 50%"}}>
+                      <ResponsiveContainer width="100%" height={180}>
+                        <BarChart data={chartData} barGap={4}>
+                          <CartesianGrid strokeDasharray="3 3" stroke={CG} />
+                          <XAxis dataKey="name" tick={{fontSize:9,fill:CX}} />
+                          <YAxis tick={{fontSize:9,fill:CY}} tickFormatter={v => "$"+v} />
+                          <Tooltip formatter={(v) => "$"+v+"/ct"} />
+                          <Legend wrapperStyle={{fontSize:10}} />
+                          <Bar dataKey="PL-B $/ct" fill="#a855f7" radius={[3,3,0,0]} />
+                          <Bar dataKey="PL-M $/ct" fill="#16a34a" radius={[3,3,0,0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                    <div style={{flex:"1 1 50%"}}>
+                      <table style={{marginBottom:0}}>
+                        <thead><tr>
+                          <th style={{textAlign:"left",fontSize:10}}>Sieve</th>
+                          <th style={{fontSize:10}}>Pol CTS</th>
+                          <th style={{fontSize:10,color:"var(--purple)"}}>PL-B Avg</th>
+                          <th style={{fontSize:10,color:"var(--green)"}}>PL-M Avg</th>
+                          <th style={{fontSize:10}}>Diff</th>
+                        </tr></thead>
+                        <tbody>
+                          {chartData.map(d => <tr key={d.name}>
+                            <td style={{textAlign:"left",fontWeight:600,fontSize:11}}>{d.name}</td>
+                            <td style={{fontFamily:"'DM Mono',monospace",fontSize:11}}>{d.cts}</td>
+                            <td style={{fontFamily:"'DM Mono',monospace",fontSize:11,color:"var(--purple)"}}>${d["PL-B $/ct"]}</td>
+                            <td style={{fontFamily:"'DM Mono',monospace",fontSize:11,color:"var(--green)"}}>${d["PL-M $/ct"]}</td>
+                            <td style={{fontWeight:700,fontSize:11,fontFamily:"'DM Mono',monospace",
+                              color: parseInt(d.diff) > 0 ? "var(--green)" : "var(--red)"
+                            }}>{d.diff}</td>
+                          </tr>)}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>;
+              })}
+            </div>
+            <div style={{padding:"10px 16px",fontSize:11,color:"var(--text3)",borderTop:"1px solid var(--border)"}}>
+              PL-B = Amay V3 prices (actual granular rates) · PL-M = Market (broker avg + 20% + 15% flat) · Avg $/ct weighted by polish CTS in each sieve · Top 4 sieves by weight shown per parcel
             </div>
           </div>
 
