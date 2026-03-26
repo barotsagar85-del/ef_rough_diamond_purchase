@@ -109,7 +109,7 @@ const PARCEL_DEFS = [
   {
     id: "79_sw", label: "+7+9+11 GEM SW", type: "SW",
     segs: ["-9+7","-11+9","+11"],
-    parcel: { date:"2026-03-16", tender:"ODC", number:"91", name:"+11+9+7 White Gem Z", totalCts:367.89, pcs:1184, lastSold:206, bidPrice:"" },
+    parcel: { date:"2026-03-16", tender:"ODC", number:"91", name:"+11+9+7 White Gem Z", totalCts:367.89, pcs:1184, lastSold:206, bidPrice:"", openingPrice:155, soldPrice:235.68, soldTotal:86704 },
     flu: [
       { none:{c:16.77,s:107}, fnt:{c:1.33,s:9}, ms:{c:1.93,s:13} },
       { none:{c:47.61,s:182}, fnt:{c:1.37,s:6}, ms:{c:4.02,s:15} },
@@ -126,7 +126,7 @@ const PARCEL_DEFS = [
   {
     id: "79_mb", label: "+7+9+11 GEM MB", type: "MB",
     segs: ["-9+7","-11+9","+11"],
-    parcel: { date:"2026-03-16", tender:"ODC", number:"92", name:"+11+9+7 White Gem MB", totalCts:694.18, pcs:2480, lastSold:160, bidPrice:"" },
+    parcel: { date:"2026-03-16", tender:"ODC", number:"92", name:"+11+9+7 White Gem MB", totalCts:694.18, pcs:2480, lastSold:160, bidPrice:"", openingPrice:120, soldPrice:170, soldTotal:118009 },
     flu: [
       { none:{c:26.5,s:165}, fnt:{c:6.22,s:40}, ms:{c:0,s:0} },
       { none:{c:56.47,s:225}, fnt:{c:5.43,s:21}, ms:{c:6.77,s:26} },
@@ -148,7 +148,8 @@ const PARCEL_DEFS = [
     segs: ["-7+5","-5+3"],
     sampleExtrap: true, // combined sample → ratio → apply to each segment's full rough cts
     segRoughCts: [55.52, 3.88], // from ODC profile: -7+5=55.52, -5+3=3.88
-    parcel: { date:"2026-03-16", tender:"ODC", number:"101", name:"+5+3 Gem SW", totalCts:59.41, pcs:0, lastSold:120, bidPrice:"" },
+    segAvgRoughSize: [0.107, 0.065], // avg rough stone size per segment: -7+5 ~0.107ct, -5+3 ~0.065ct
+    parcel: { date:"2026-03-16", tender:"ODC", number:"101", name:"+5+3 Gem SW", totalCts:59.41, pcs:0, lastSold:120, bidPrice:"", openingPrice:90, soldPrice:116, soldTotal:6897 },
     flu: [
       { none:{c:15,s:135}, fnt:{c:0,s:0}, ms:{c:1.18,s:16} },
       { none:{c:15,s:135}, fnt:{c:0,s:0}, ms:{c:1.18,s:16} }, // same fluo for both segs (combined sample)
@@ -164,7 +165,8 @@ const PARCEL_DEFS = [
     segs: ["-7+5","-5+3"],
     sampleExtrap: true,
     segRoughCts: [191.13, 27.24], // from ODC profile: -7+5=191.13, -5+3=27.24
-    parcel: { date:"2026-03-16", tender:"ODC", number:"102", name:"+5+3 Gem MB", totalCts:218.37, pcs:0, lastSold:102, bidPrice:"" },
+    segAvgRoughSize: [0.092, 0.065], // avg rough stone size per segment: -7+5 ~0.092ct, -5+3 ~0.065ct
+    parcel: { date:"2026-03-16", tender:"ODC", number:"102", name:"+5+3 Gem MB", totalCts:218.37, pcs:0, lastSold:102, bidPrice:"", openingPrice:77, soldPrice:95.65, soldTotal:20891 },
     flu: [
       { none:{c:43.12,s:468}, fnt:{c:0,s:0}, ms:{c:8.38,s:82} },
       { none:{c:43.12,s:468}, fnt:{c:0,s:0}, ms:{c:8.38,s:82} }, // same fluo for both segs
@@ -234,9 +236,13 @@ function buildA(type, segs, pre, pre_mb, def) {
     const sTotal = def.combinedSampleTotal;
     if (!sample || !sTotal || !sTotal.cts) return segs.map(() => ({}));
 
+    const sampleAvgSize = sTotal.pcs > 0 ? sTotal.cts / sTotal.pcs : 0.1; // avg rough size in the sample
+
     return segs.map((_, si) => {
       const segCts = def.segRoughCts?.[si] || 0;
-      const ctsRatio = sTotal.cts > 0 ? segCts / sTotal.cts : 0;
+      const segAvg = def.segAvgRoughSize?.[si] || sampleAvgSize; // use segment's own avg rough size
+      const ctsRatio = sTotal.cts > 0 ? segCts / sTotal.cts : 0; // proportion of total rough weight
+      const sizeRatio = sampleAvgSize > 0 ? segAvg / sampleAvgSize : 1; // how much smaller/bigger stones are vs sample
       const s = {};
       COLORS_AST.forEach(c => {
         s[c] = {};
@@ -246,10 +252,9 @@ function buildA(type, segs, pre, pre_mb, def) {
             CLARITIES.forEach(cl => {
               const p = sample?.[c]?.[sh]?.[cl];
               if (p && (p.pcs || p.cts)) {
-                s[c][sh][cl] = {
-                  pcs: p.pcs ? Math.round(parseFloat(p.pcs) * ctsRatio) : "",
-                  cts: p.cts ? Math.round(parseFloat(p.cts) * ctsRatio * 100) / 100 : ""
-                };
+                const scaledCts = p.cts ? Math.round(parseFloat(p.cts) * ctsRatio * 100) / 100 : 0;
+                const scaledPcs = segAvg > 0 && scaledCts > 0 ? Math.round(scaledCts / segAvg) : (p.pcs ? Math.round(parseFloat(p.pcs) * ctsRatio) : 0);
+                s[c][sh][cl] = { pcs: scaledPcs || "", cts: scaledCts || "" };
               } else {
                 s[c][sh][cl] = { pcs: "", cts: "" };
               }
@@ -259,10 +264,9 @@ function buildA(type, segs, pre, pre_mb, def) {
           CLARITIES.forEach(cl => {
             const p = sample?.[c]?.[cl];
             if (p && (p.pcs || p.cts)) {
-              s[c][cl] = {
-                pcs: p.pcs ? Math.round(parseFloat(p.pcs) * ctsRatio) : "",
-                cts: p.cts ? Math.round(parseFloat(p.cts) * ctsRatio * 100) / 100 : ""
-              };
+              const scaledCts = p.cts ? Math.round(parseFloat(p.cts) * ctsRatio * 100) / 100 : 0;
+              const scaledPcs = segAvg > 0 && scaledCts > 0 ? Math.round(scaledCts / segAvg) : (p.pcs ? Math.round(parseFloat(p.pcs) * ctsRatio) : 0);
+              s[c][cl] = { pcs: scaledPcs || "", cts: scaledCts || "" };
             } else {
               s[c][cl] = { pcs: "", cts: "" };
             }
@@ -322,10 +326,10 @@ const isHot = (avgSize, co, cl) => {
   if (!avgSize || avgSize <= 0) return false;
   if (co && cl && isCommercial(co, cl)) return false;
   const mm = ctsToMM(avgSize);
-  if (mm >= 1.40 && mm <= 1.49) return true;    // Band 1: 1.40-1.49mm
-  if (mm >= 2.00 && mm <= 2.09) return true;    // Band 2: 2.00-2.09mm
-  if (mm >= 2.70 && mm <= 2.89) return true;    // Band 3a: 2.70-2.89mm
-  if (mm >= 3.30 && mm <= 3.685) return true;   // Band 3b: 3.30-3.69mm
+  if (mm >= 1.30 && mm <= 1.39) return true;    // Band 1: 1.30-1.39mm
+  if (mm >= 1.90 && mm <= 1.99) return true;    // Band 2: 1.90-1.99mm
+  if (mm >= 2.60 && mm <= 2.79) return true;    // Band 3a: 2.60-2.79mm
+  if (mm >= 3.20 && mm <= 3.585) return true;   // Band 3b: 3.20-3.59mm
   return false;
 };
 
@@ -487,6 +491,10 @@ export default function App() {
   const [pmOverrides, setPmOverrides] = useState({});
   const [pricingMode, setPricingMode] = useState("PL_A"); // "PL_A" (Amay V3) | "PL_M" (Market)
 
+  // Cut Mode: 1 = Whole stone, 2 = Sawn (saw in half)
+  const [cutModes, setCutModes] = useState(() => PARCEL_DEFS.map(() => 1));
+  const [sawnYieldCap] = useState(0.45); // max yield when sawing
+
   // Master Summary — bid calculator state
   const [globalLabour, setGlobalLabour] = useState(30); // default $/ct labour
   const [globalProfit, setGlobalProfit] = useState(10); // default profit %
@@ -503,6 +511,8 @@ export default function App() {
   const ast = asts[activePcl];
   const odcPrf = odcPrfs[activePcl];
   const SEGS = def.segs;
+  const cutMode = cutModes[activePcl];
+  const setCutMode = (v) => setCutModes(p => { const n = [...p]; n[activePcl] = v; return n; });
 
   const activePM = pricingMode === "PL_M" ? PM_PLM : PM_PLB;
   const getPM = useCallback((sh, sv, co, cl) => {
@@ -546,8 +556,11 @@ export default function App() {
             if (def.type === "MB") { rP = Math.round(parseFloat(sg2[co]?.[sh]?.[cl]?.pcs) || 0); rC = parseFloat(sg2[co]?.[sh]?.[cl]?.cts) || 0; }
             else { rP = Math.round(parseFloat(sg2[co]?.[cl]?.pcs) || 0); rC = parseFloat(sg2[co]?.[cl]?.cts) || 0; }
             if (rP === 0 && rC === 0) continue;
-            const sI = SHAPES.indexOf(sh); const yi = cfg.yld[sh] || 0.43;
-            const mu = cfg.mult[sI >= 0 ? sI : 0][si] || 1.05;
+            const sI = SHAPES.indexOf(sh);
+            const baseYi = cfg.yld[sh] || 0.43;
+            const baseMu = cfg.mult[sI >= 0 ? sI : 0][si] || 1.05;
+            const yi = cutMode === 2 ? Math.min(baseYi, sawnYieldCap) : baseYi;
+            const mu = cutMode === 2 ? 2 : baseMu;
             const pC = rC * yi; const pP = Math.round(rP * mu);
             const av = pP > 0 ? pC / pP : 0;
             const sv = findSv(av);
@@ -563,7 +576,7 @@ export default function App() {
       res.push(sr);
     }
     return res;
-  }, [ast, cfg, flu, def, SEGS, getPM]);
+  }, [ast, cfg, flu, def, SEGS, getPM, cutMode, sawnYieldCap]);
 
   const all = pol.flat();
   const gr = {
@@ -593,8 +606,12 @@ export default function App() {
               if (pDef.type === "MB") { rP = Math.round(parseFloat(sg2[co]?.[sh]?.[cl]?.pcs)||0); rC = parseFloat(sg2[co]?.[sh]?.[cl]?.cts)||0; }
               else { rP = Math.round(parseFloat(sg2[co]?.[cl]?.pcs)||0); rC = parseFloat(sg2[co]?.[cl]?.cts)||0; }
               if (rP === 0 && rC === 0) continue;
-              const sI = SHAPES.indexOf(sh); const yi = pCfg.yld[sh] || 0.43;
-              const mu = pCfg.mult[sI >= 0 ? sI : 0][si] || 1.05;
+              const sI = SHAPES.indexOf(sh);
+              const pCutMode = cutModes[pi];
+              const baseYi = pCfg.yld[sh] || 0.43;
+              const baseMu = pCfg.mult[sI >= 0 ? sI : 0][si] || 1.05;
+              const yi = pCutMode === 2 ? Math.min(baseYi, sawnYieldCap) : baseYi;
+              const mu = pCutMode === 2 ? 2 : baseMu;
               const pC = rC * yi; const pP = Math.round(rP * mu);
               const av = pP > 0 ? pC / pP : 0;
               const sv = findSv(av);
@@ -624,7 +641,66 @@ export default function App() {
       const hotPct = pC > 0 ? hotCts / pC * 100 : 0;
       return { rC, rP, pC, pP, tot, totA, totM, hotPct, rows };
     });
-  }, [asts, cfgs, flus, pmOverrides, pricingMode]);
+  }, [asts, cfgs, flus, pmOverrides, pricingMode, cutModes, sawnYieldCap]);
+
+  // Whole vs Sawn comparison — always computes BOTH scenarios for every parcel
+  const wholeVsSawn = useMemo(() => {
+    return PARCEL_DEFS.map((pDef, pi) => {
+      const pAst = asts[pi]; const pCfg = cfgs[pi]; const pFlu = flus[pi];
+      const pSegs = pDef.segs;
+      const calc = (mode) => {
+        let totA = 0, totM = 0, pC = 0, pP = 0, rC = 0, hotCts = 0;
+        for (let si = 0; si < pSegs.length; si++) {
+          const sg2 = pAst[si]; const fl = pFlu[si];
+          if (!fl || !sg2) continue;
+          const tf = (parseFloat(fl.none?.c)||0)+(parseFloat(fl.fnt?.c)||0)+(parseFloat(fl.ms?.c)||0);
+          const np = tf>0?(parseFloat(fl.none?.c)||0)/tf:1;
+          const fp = tf>0?(parseFloat(fl.fnt?.c)||0)/tf:0;
+          const mp = tf>0?(parseFloat(fl.ms?.c)||0)/tf:0;
+          const shps = pDef.type === "MB" ? SHAPES : ["Round"];
+          for (const co of COLORS_AST) {
+            for (const sh of shps) {
+              for (const cl of CLARITIES) {
+                let rPi, rCi;
+                if (pDef.type==="MB") { rPi=Math.round(parseFloat(sg2[co]?.[sh]?.[cl]?.pcs)||0); rCi=parseFloat(sg2[co]?.[sh]?.[cl]?.cts)||0; }
+                else { rPi=Math.round(parseFloat(sg2[co]?.[cl]?.pcs)||0); rCi=parseFloat(sg2[co]?.[cl]?.cts)||0; }
+                if (rPi===0 && rCi===0) continue;
+                rC += rCi;
+                const sI = SHAPES.indexOf(sh);
+                const baseYi = pCfg.yld[sh]||0.43;
+                const baseMu = pCfg.mult[sI>=0?sI:0][si]||1.05;
+                const yi = mode===2 ? Math.min(baseYi, sawnYieldCap) : baseYi;
+                const mu = mode===2 ? 2 : baseMu;
+                const pCi = rCi*yi; const pPi = Math.round(rPi*mu);
+                pC += pCi; pP += pPi;
+                const av = pPi>0 ? pCi/pPi : 0;
+                const sv = findSv(av);
+                const rtA = sv ? (PM_PLB[sh]?.[sv.id]?.[co]?.[cl]||0) : 0;
+                const rtM = sv ? (PM_PLM[sh]?.[sv.id]?.[co]?.[cl]||0) : 0;
+                const md = pCfg.fd.med/100; const sd = pCfg.fd.stg/100;
+                const fluAdj = (np+fp)+mp*(1-(md+sd)/2);
+                totA += Math.round(pCi*rtA*fluAdj);
+                totM += Math.round(pCi*rtM*fluAdj);
+                if (isHot(av, co, cl)) hotCts += pCi;
+              }
+            }
+          }
+        }
+        const hotPct = pC>0 ? hotCts/pC*100 : 0;
+        return { totA, totM, pC, pP, rC: rC/2, hotPct }; // rC/2 because counted in both modes
+      };
+      const w = calc(1); const s = calc(2);
+      // Fix rC — use actual parcel rough cts
+      const rC = allParcelPolish[pi]?.rC || 0;
+      return {
+        whole: { ...w, rC, bidA: rC>0?Math.round(w.totA/rC):0, bidM: rC>0?Math.round(w.totM/rC):0 },
+        sawn:  { ...s, rC, bidA: rC>0?Math.round(s.totA/rC):0, bidM: rC>0?Math.round(s.totM/rC):0 },
+        deltaA: s.totA - w.totA,
+        deltaM: s.totM - w.totM,
+        deltaHot: s.hotPct - w.hotPct,
+      };
+    });
+  }, [asts, cfgs, flus, sawnYieldCap, allParcelPolish]);
 
   const sum = useMemo(() => {
     const g = {};
@@ -650,10 +726,10 @@ export default function App() {
     const nc = r => !isCommercial(r.co, r.cl); // non-commercial filter
     const mmCheck = (r, loMM, hiMM) => { const mm = ctsToMM(r.av); return nc(r) && mm >= loMM && mm <= hiMM; };
     const bands = [
-      { label: "Band 1", range: "1.40-1.49mm", mm: "0.012-0.013ct", rows: all.filter(r => mmCheck(r, 1.40, 1.49)) },
-      { label: "Band 2", range: "2.00-2.09mm", mm: "0.035ct", rows: all.filter(r => mmCheck(r, 2.00, 2.09)) },
-      { label: "Band 3a", range: "2.70-2.89mm", mm: "0.078-0.086ct", rows: all.filter(r => mmCheck(r, 2.70, 2.89)) },
-      { label: "Band 3b", range: "3.30-3.69mm", mm: "0.135-0.175ct", rows: all.filter(r => mmCheck(r, 3.30, 3.685)) },
+      { label: "Band 1", range: "1.30-1.39mm", mm: "0.010-0.011ct", rows: all.filter(r => mmCheck(r, 1.30, 1.39)) },
+      { label: "Band 2", range: "1.90-1.99mm", mm: "0.029ct", rows: all.filter(r => mmCheck(r, 1.90, 1.99)) },
+      { label: "Band 3a", range: "2.60-2.79mm", mm: "0.069-0.078ct", rows: all.filter(r => mmCheck(r, 2.60, 2.79)) },
+      { label: "Band 3b", range: "3.20-3.59mm", mm: "0.116-0.159ct", rows: all.filter(r => mmCheck(r, 3.20, 3.585)) },
     ];
     return { hotCts, hotPcs, hotTot, coldCts, coldPcs, coldTot, totalPc, hotPct, bands };
   }, [all]);
@@ -752,57 +828,53 @@ export default function App() {
                         <th style={{textAlign:"left"}}>Parcel</th>
                         <th>Type</th>
                         <th>Rough CTS</th>
-                        <th>Polish CTS</th>
                         <th>Yield %</th>
-                        <th style={{background:"var(--blue-bg)",color:"var(--blue)"}}>PL-A Value</th>
                         <th style={{background:"var(--blue-bg)",color:"var(--blue)"}}>PL-A $/ct R</th>
-                        <th style={{background:"var(--green-bg)",color:"var(--green)"}}>PL-M Value</th>
                         <th style={{background:"var(--green-bg)",color:"var(--green)"}}>PL-M $/ct R</th>
-                        <th style={{background:"var(--amber-bg)",color:"var(--amber)"}}>Diff $</th>
-                        <th style={{background:"var(--amber-bg)",color:"var(--amber)"}}>Diff %</th>
+                        <th style={{background:"var(--purple-bg)",color:"var(--purple)"}}>Opening</th>
+                        <th style={{background:"var(--amber-bg)",color:"var(--amber)"}}>Sold $/ct</th>
                         <th>Last Sold</th>
+                        <th style={{background:"var(--amber-bg)",color:"var(--amber)"}}>Sold vs Open</th>
                       </tr>
                     </thead>
                     <tbody>
                       {PARCEL_DEFS.map((pDef, pi) => {
                         const p = allParcelPolish[pi]; const pcl = parcels[pi];
                         const yld = p.rC > 0 ? (p.pC/p.rC*100).toFixed(1) : "0";
-                        const diff = p.totM - p.totA;
-                        const diffPct = p.totA > 0 ? (diff/p.totA*100).toFixed(1) : "0";
+                        const plaPerCt = p.rC>0?Math.round(p.totA/p.rC):0;
+                        const plmPerCt = p.rC>0?Math.round(p.totM/p.rC):0;
+                        const openP = pcl.openingPrice || 0;
+                        const soldP = pcl.soldPrice || 0;
+                        const soldVsOpen = openP > 0 && soldP > 0 ? ((soldP - openP)/openP*100).toFixed(1) : "—";
                         return <tr key={pDef.id} style={{cursor:"pointer"}} onClick={() => { setActivePcl(pi); setTab(0); setPage("parcel"); }}>
                           <td style={{textAlign:"left",paddingLeft:20,fontWeight:700}}>#{pcl.number}</td>
                           <td style={{textAlign:"left",fontWeight:600,color:"var(--blue)"}}>{pDef.label}</td>
-                          <td><span className={`badge ${pDef.type==="SW"?"badge-blue":"badge-amber"}`} style={{fontSize:9}}>{pDef.type==="SW"?"SW":"MB"}</span></td>
+                          <td><span className={`badge ${pDef.type==="SW"?"badge-blue":"badge-amber"}`} style={{fontSize:9}}>{pDef.type==="SW"?"SW":"MB"}</span>{cutModes[pi]===2 && <span style={{fontSize:8,background:"#dc2626",color:"#fff",borderRadius:3,padding:"1px 4px",marginLeft:3,fontWeight:700}}>SAWN</span>}</td>
                           <td style={{fontFamily:"'DM Mono',monospace"}}>{f(p.rC,1)}</td>
-                          <td style={{fontFamily:"'DM Mono',monospace"}}>{f(p.pC,1)}</td>
                           <td>{yld}%</td>
-                          <td style={{background:"var(--blue-bg)",fontWeight:700,fontFamily:"'DM Mono',monospace",color:"var(--blue)"}}>${p.totA.toLocaleString()}</td>
-                          <td style={{background:"var(--blue-bg)",fontFamily:"'DM Mono',monospace"}}>${p.rC>0?Math.round(p.totA/p.rC):0}</td>
-                          <td style={{background:"var(--green-bg)",fontWeight:700,fontFamily:"'DM Mono',monospace",color:"var(--green)"}}>${p.totM.toLocaleString()}</td>
-                          <td style={{background:"var(--green-bg)",fontFamily:"'DM Mono',monospace"}}>${p.rC>0?Math.round(p.totM/p.rC):0}</td>
-                          <td style={{background:"var(--amber-bg)",fontWeight:700,fontFamily:"'DM Mono',monospace",color:diff>0?"var(--green)":"var(--red)"}}>{diff>0?"+":""}${Math.round(diff).toLocaleString()}</td>
-                          <td style={{background:"var(--amber-bg)",fontWeight:600,color:diff>0?"var(--green)":"var(--red)"}}>{diff>0?"+":""}{diffPct}%</td>
+                          <td style={{background:"var(--blue-bg)",fontWeight:700,fontFamily:"'DM Mono',monospace",color:"var(--blue)"}}>${plaPerCt}</td>
+                          <td style={{background:"var(--green-bg)",fontWeight:700,fontFamily:"'DM Mono',monospace",color:"var(--green)"}}>${plmPerCt}</td>
+                          <td style={{background:"var(--purple-bg)",fontWeight:600,fontFamily:"'DM Mono',monospace",color:"var(--purple)"}}>${openP}</td>
+                          <td style={{background:"var(--amber-bg)",fontWeight:700,fontFamily:"'DM Mono',monospace",color:"var(--amber)"}}>${soldP}</td>
                           <td style={{fontWeight:600}}>${pcl.lastSold}/ct</td>
+                          <td style={{background:"var(--amber-bg)",fontWeight:600,fontFamily:"'DM Mono',monospace",color:soldP>openP?"var(--green)":"var(--text3)"}}>{soldVsOpen !== "—" ? "+"+soldVsOpen+"%" : "—"}</td>
                         </tr>;
                       })}
                       <tr style={{fontWeight:700,borderTop:"2px solid var(--border2)"}}>
                         <td colSpan={3} style={{textAlign:"left",paddingLeft:20}}>GRAND TOTAL</td>
                         <td style={{fontFamily:"'DM Mono',monospace"}}>{f(gRc,1)}</td>
-                        <td style={{fontFamily:"'DM Mono',monospace"}}>{f(gPc,1)}</td>
                         <td>{gRc>0?(gPc/gRc*100).toFixed(1):0}%</td>
-                        <td style={{background:"var(--blue-bg)",color:"var(--blue)",fontFamily:"'DM Mono',monospace"}}>${gTotA.toLocaleString()}</td>
-                        <td style={{background:"var(--blue-bg)",fontFamily:"'DM Mono',monospace"}}>${gRc>0?Math.round(gTotA/gRc):0}</td>
-                        <td style={{background:"var(--green-bg)",color:"var(--green)",fontFamily:"'DM Mono',monospace"}}>${gTotM.toLocaleString()}</td>
-                        <td style={{background:"var(--green-bg)",fontFamily:"'DM Mono',monospace"}}>${gRc>0?Math.round(gTotM/gRc):0}</td>
-                        <td style={{background:"var(--amber-bg)",fontFamily:"'DM Mono',monospace",color:gTotM-gTotA>0?"var(--green)":"var(--red)"}}>{gTotM-gTotA>0?"+":""}${Math.round(gTotM-gTotA).toLocaleString()}</td>
-                        <td style={{background:"var(--amber-bg)",color:gTotM-gTotA>0?"var(--green)":"var(--red)"}}>{gTotA>0?"+":""}{mktPrem}%</td>
+                        <td style={{background:"var(--blue-bg)",color:"var(--blue)",fontFamily:"'DM Mono',monospace"}}>${gRc>0?Math.round(gTotA/gRc):0}</td>
+                        <td style={{background:"var(--green-bg)",color:"var(--green)",fontFamily:"'DM Mono',monospace"}}>${gRc>0?Math.round(gTotM/gRc):0}</td>
+                        <td style={{background:"var(--purple-bg)"}} colSpan={2}>—</td>
                         <td>—</td>
+                        <td style={{background:"var(--amber-bg)"}}>—</td>
                       </tr>
                     </tbody>
                   </table>
                 </div>
                 <div style={{padding:"10px 20px",fontSize:11,color:"var(--text3)",borderTop:"1px solid var(--border)"}}>
-                  PL-A = EF Price List base rates · PL-M = Market (Avg broker price + 20% Surat premium) · Click any row to view parcel details
+                  PL-A = Amay V3 granular prices · PL-M = Market (Avg broker + 20% Surat premium) · Opening = ODC auction start price · Sold = final auction result · Click any row to view parcel details
                 </div>
               </div>
             </div>
@@ -849,6 +921,7 @@ export default function App() {
                 <div className="card-hdr">
                   <span className="card-title">Lot #{pcl.number} — {d.label}</span>
                   <span className="badge badge-blue">{d.type === "SW" ? "Sawable" : "Makeable"}</span>
+                  {cutModes[i]===2 && <span style={{fontSize:9,background:"#dc2626",color:"#fff",borderRadius:4,padding:"2px 6px",fontWeight:700}}>SAWN ½</span>}
                 </div>
                 <div className="card-body">
                   <div style={{display:"grid",gridTemplateColumns:"repeat(3, 1fr)",gap:8,marginBottom:10}}>
@@ -856,10 +929,12 @@ export default function App() {
                     <div><div className="lbl">Polish CTS</div><div style={{fontWeight:700,fontFamily:"'DM Mono',monospace"}}>{f(p.pC,1)}</div></div>
                     <div><div className="lbl">Yield</div><div style={{fontWeight:700,fontFamily:"'DM Mono',monospace"}}>{yld}%</div></div>
                   </div>
-                  <div style={{display:"flex",gap:12,fontSize:11}}>
-                    <span>PL-A: <strong style={{color:"var(--blue)"}}>${p.totA.toLocaleString()}</strong></span>
-                    <span>PL-M: <strong style={{color:"var(--green)"}}>${p.totM.toLocaleString()}</strong></span>
-                    <span>Last Sold: <strong style={{color:"var(--amber)"}}>${pcl.lastSold}/ct</strong></span>
+                  <div style={{display:"flex",gap:12,fontSize:11,flexWrap:"wrap"}}>
+                    <span>PL-A: <strong style={{color:"var(--blue)"}}>${p.rC>0?Math.round(p.totA/p.rC):0}/ct</strong></span>
+                    <span>PL-M: <strong style={{color:"var(--green)"}}>${p.rC>0?Math.round(p.totM/p.rC):0}/ct</strong></span>
+                    <span>Opening: <strong style={{color:"var(--purple)"}}>${pcl.openingPrice}/ct</strong></span>
+                    <span>Sold: <strong style={{color:"var(--amber)"}}>${pcl.soldPrice}/ct</strong></span>
+                    <span>Last: <strong style={{color:"var(--text3)"}}>${pcl.lastSold}/ct</strong></span>
                   </div>
                 </div>
               </div>;
@@ -886,6 +961,7 @@ export default function App() {
           <span className="link" onClick={() => setPage("home")}>Home</span><span className="sep">›</span>
           <span className="link" onClick={() => setPage("tender")}>ODC Mar 2026</span><span className="sep">›</span>
           <span style={{color:"var(--hdr-text)",fontWeight:600}}>{tab === MASTER_TAB ? "Master Summary" : tab === BID_COMPARE_TAB ? "PL Compare" : "Lot #"+parcel.number}</span>
+          {cutMode === 2 && tab !== MASTER_TAB && tab !== BID_COMPARE_TAB && <span style={{fontSize:9,background:"#dc2626",color:"#fff",borderRadius:4,padding:"2px 8px",marginLeft:6,fontWeight:700}}>SAWN MODE</span>}
         </div>
         <div className="hdr-divider"></div>
         <button className={`master-btn ${tab === MASTER_TAB ? "active" : "inactive"}`}
@@ -924,7 +1000,7 @@ export default function App() {
       {tab !== MASTER_TAB && tab !== BID_COMPARE_TAB && <div className="parcel-tabs">
         {PARCEL_DEFS.map((d, i) => (
           <button key={d.id} className={`parcel-tab ${activePcl === i ? "active" : ""}`}
-            onClick={() => { setActivePcl(i); setSg(0); }}>{d.label}</button>
+            onClick={() => { setActivePcl(i); setSg(0); }}>{d.label}{cutModes[i]===2 && <span style={{fontSize:8,background:"#dc2626",color:"#fff",borderRadius:3,padding:"1px 3px",marginLeft:4,fontWeight:700,verticalAlign:"middle"}}>½</span>}</button>
         ))}
       </div>}
 
@@ -959,16 +1035,39 @@ export default function App() {
           </div>
 
           <div className="card">
-            <div className="card-hdr"><span className="card-title">Yield & Stone Multiplier</span><span style={{fontSize:10,color:"var(--text3)"}}>Multiplier per segment</span></div>
+            <div className="card-hdr">
+              <span className="card-title">Yield & Stone Multiplier</span>
+              <div style={{display:"flex",alignItems:"center",gap:8}}>
+                <span style={{fontSize:10,color:"var(--text3)"}}>Cut Mode:</span>
+                <div style={{display:"flex",borderRadius:6,overflow:"hidden",border:"1px solid var(--border)"}}>
+                  <button onClick={() => setCutMode(1)} style={{padding:"3px 10px",fontSize:11,fontWeight:cutMode===1?700:400,background:cutMode===1?"var(--blue)":"transparent",color:cutMode===1?"#fff":"var(--text2)",border:"none",cursor:"pointer"}}>Whole</button>
+                  <button onClick={() => setCutMode(2)} style={{padding:"3px 10px",fontSize:11,fontWeight:cutMode===2?700:400,background:cutMode===2?"#dc2626":"transparent",color:cutMode===2?"#fff":"var(--text2)",border:"none",cursor:"pointer"}}>Sawn ½</button>
+                </div>
+              </div>
+            </div>
             <div className="card-body">
+              {cutMode === 2 && (
+                <div style={{background:"rgba(220,38,38,0.08)",border:"1px solid rgba(220,38,38,0.25)",borderRadius:6,padding:"8px 12px",marginBottom:12,fontSize:11,color:"var(--text2)"}}>
+                  <strong style={{color:"#dc2626"}}>Sawn mode active</strong> — Each rough stone sawn in half → Multiplier = 2, Yield capped at {(sawnYieldCap*100).toFixed(0)}%. Polish avg size drops ~50%, hitting different price bands. Total polish weight stays same (yield constraint respected).
+                </div>
+              )}
               <div className="overflow-x">
-                <table><thead><tr><th style={{textAlign:"left"}}>Shape</th><th>Yield</th>
-                  {SEGS.map(s => <th key={s}>Mult {s}</th>)}</tr></thead>
-                  <tbody>{(def.type === "MB" ? SHAPES : ["Round"]).map((sh, si) => (
-                    <tr key={sh}><td className="left">{sh}</td>
-                      <td><NI value={cfg.yld[sh]} onChange={v => setCfg(c => ({...c, yld:{...c.yld, [sh]: v === "" ? "" : parseFloat(v) || 0}}))} /></td>
-                      {SEGS.map((_, i) => <td key={i}><NI value={cfg.mult[si]?.[i]} onChange={v => setCfg(c => { const n = JSON.parse(JSON.stringify(c)); if (!n.mult[si]) n.mult[si] = [1,1,1]; n.mult[si][i] = v === "" ? "" : parseFloat(v) || 0; return n; })} /></td>)}
-                    </tr>))}</tbody></table>
+                <table><thead><tr><th style={{textAlign:"left"}}>Shape</th><th>Yield{cutMode===2 ? " (base)" : ""}</th>
+                  {SEGS.map(s => <th key={s}>{cutMode===2 ? "Mult (→2)" : "Mult"} {s}</th>)}</tr></thead>
+                  <tbody>{(def.type === "MB" ? SHAPES : ["Round"]).map((sh, si) => {
+                    const effectiveYld = cutMode === 2 ? Math.min(cfg.yld[sh] || 0.43, sawnYieldCap) : cfg.yld[sh];
+                    return <tr key={sh}><td className="left">{sh}</td>
+                      <td style={{position:"relative"}}>
+                        <NI value={cfg.yld[sh]} onChange={v => setCfg(c => ({...c, yld:{...c.yld, [sh]: v === "" ? "" : parseFloat(v) || 0}}))} style={cutMode===2 && (cfg.yld[sh]||0) > sawnYieldCap ? {color:"#dc2626"} : undefined} />
+                        {cutMode === 2 && (cfg.yld[sh]||0) > sawnYieldCap && <span style={{fontSize:9,color:"#dc2626",position:"absolute",right:2,top:-2}}>→{(sawnYieldCap*100).toFixed(0)}%</span>}
+                      </td>
+                      {SEGS.map((_, i) => <td key={i} style={cutMode===2?{opacity:0.4}:undefined}>
+                        {cutMode === 2
+                          ? <span style={{fontFamily:"var(--mono)",fontSize:12,fontWeight:700,color:"#dc2626"}}>2</span>
+                          : <NI value={cfg.mult[si]?.[i]} onChange={v => setCfg(c => { const n = JSON.parse(JSON.stringify(c)); if (!n.mult[si]) n.mult[si] = [1,1,1]; n.mult[si][i] = v === "" ? "" : parseFloat(v) || 0; return n; })} />
+                        }
+                      </td>)}
+                    </tr>})}</tbody></table>
               </div>
               <div className="row" style={{marginTop:12}}>
                 <div className="field"><span className="lbl">Med Fluo Disc %</span><span className="ni" style={{display:"inline-block",padding:"2px 6px",fontFamily:"'DM Mono',monospace",fontSize:12,color:"var(--text2)"}}>25%</span></div>
@@ -1194,10 +1293,10 @@ export default function App() {
                   const hot = isHot(r.av, r.co, r.cl);
                   let band = "—";
                   const mm = ctsToMM(r.av);
-                  if (mm >= 1.40 && mm <= 1.49) band = "B1";
-                  else if (mm >= 2.00 && mm <= 2.09) band = "B2";
-                  else if (mm >= 2.70 && mm <= 2.89) band = "B3a";
-                  else if (mm >= 3.30 && mm <= 3.685) band = "B3b";
+                  if (mm >= 1.30 && mm <= 1.39) band = "B1";
+                  else if (mm >= 1.90 && mm <= 1.99) band = "B2";
+                  else if (mm >= 2.60 && mm <= 2.79) band = "B3a";
+                  else if (mm >= 3.20 && mm <= 3.585) band = "B3b";
                   const sI = SHAPES.indexOf(r.sh);
                   return (
                     <tr key={i} style={{background: hot ? "var(--green-bg)" : i % 2 === 0 ? "transparent" : "var(--card2)"}}>
@@ -1207,8 +1306,8 @@ export default function App() {
                       <td className="left2">{r.cl}</td>
                       <td>{f(r.rP,0)}</td>
                       <td>{f(r.rC,2)}</td>
-                      <td style={{fontSize:10,color:"var(--text3)"}}>{cfg.yld[r.sh] || "—"}</td>
-                      <td style={{fontSize:10,color:"var(--text3)"}}>{cfg.mult[sI >= 0 ? sI : 0]?.[r.si] || "—"}</td>
+                      <td style={{fontSize:10,color:cutMode===2?"#dc2626":"var(--text3)"}}>{cutMode===2 ? Math.min(cfg.yld[r.sh]||0.43, sawnYieldCap) : (cfg.yld[r.sh] || "—")}</td>
+                      <td style={{fontSize:10,color:cutMode===2?"#dc2626":"var(--text3)"}}>{cutMode===2 ? "2" : (cfg.mult[sI >= 0 ? sI : 0]?.[r.si] || "—")}</td>
                       <td className="blue">{f(r.pP,0)}</td>
                       <td className="blue">{f(r.pC,3)}</td>
                       <td style={{fontFamily:"var(--mono)",fontSize:12,fontWeight:700,color: hot ? "var(--green)" : "var(--text)"}}>{f(r.av,5)}</td>
@@ -1220,8 +1319,9 @@ export default function App() {
               </tbody></table>
             </div>
             <div style={{padding:"8px 14px",fontSize:10,color:"var(--text3)"}}>
-              Hot bands (MM-based): B1=1.40-1.49mm · B2=2.00-2.09mm · B3a=2.70-2.89mm · B3b=3.30-3.69mm · Only DEF/G/H × VVS/VS1/VS2.
-              Avg Size = Polish CTS / Polish PCS. Polish CTS = Rough CTS × Yield. Polish PCS = Round(Rough PCS × Stone Multiplier).
+              Hot bands (MM-based): B1=1.30-1.39mm · B2=1.90-1.99mm · B3a=2.60-2.79mm · B3b=3.20-3.59mm · Only DEF/G/H × VVS/VS1/VS2.
+              Avg Size = Polish CTS / Polish PCS. Polish CTS = Rough CTS × Yield. Polish PCS = Round(Rough PCS × Multiplier).
+              {cutMode === 2 && " ⚠ SAWN MODE: Mult forced to 2, Yield capped at " + (sawnYieldCap*100) + "%. Avg size ~halved → different price bands."}
             </div>
           </div>
         </>}
@@ -1824,7 +1924,7 @@ export default function App() {
           </div>
 
           <div style={{padding:"10px 0",fontSize:10,color:"var(--text3)"}}>
-            Hot sizes per Amay demand forecast: Band 1 (0.012-0.013ct / 1.40-1.49mm) · Band 2 (0.035ct / 2.00-2.09mm) · Band 3a (0.078-0.089ct / 2.70-2.89mm) · Band 3b (0.135-0.175ct / 3.30-3.69mm) · Only DEF/G/H × VVS/VS1/VS2 × Rounds.
+            Hot sizes per Amay demand forecast: Band 1 (0.010-0.011ct / 1.30-1.39mm) · Band 2 (0.029ct / 1.90-1.99mm) · Band 3a (0.069-0.078ct / 2.60-2.79mm) · Band 3b (0.116-0.159ct / 3.20-3.59mm) · Only DEF/G/H × VVS/VS1/VS2 × Rounds.
           </div>
           </>;
         })()}
@@ -1979,6 +2079,95 @@ export default function App() {
                 Yellow cells are editable — override any $/ct to see instant impact on total value and bid. Bid = ((Total Value − Labour × Rough CTS) / Rough CTS) × (1 − Profit%)
               </div>
             </div>
+
+          {/* ═══ WHOLE vs SAWN COMPARISON ═══ */}
+          <div className="card" style={{borderLeft:"3px solid #dc2626"}}>
+            <div className="card-hdr">
+              <span className="card-title">Whole Stone vs Sawn (½) — Side by Side</span>
+              <span style={{fontSize:10,color:"var(--text3)"}}>Same parcel, two strategies — which yields more value?</span>
+            </div>
+            <div className="card-body" style={{padding:0}}>
+              <div className="overflow-x">
+                <table>
+                  <thead>
+                    <tr style={{fontSize:10}}>
+                      <th rowSpan={2} style={{textAlign:"left",paddingLeft:12}}>Lot</th>
+                      <th rowSpan={2} style={{textAlign:"left"}}>Parcel</th>
+                      <th rowSpan={2}>R.CTS</th>
+                      <th colSpan={4} style={{background:"var(--blue-bg)",color:"var(--blue)",borderBottom:"1px solid var(--border)"}}>Whole Stone (×1)</th>
+                      <th colSpan={4} style={{background:"rgba(220,38,38,0.06)",color:"#dc2626",borderBottom:"1px solid var(--border)"}}>Sawn Half (×2)</th>
+                      <th colSpan={2} style={{background:"var(--amber-bg)",borderBottom:"1px solid var(--border)"}}>Delta</th>
+                    </tr>
+                    <tr style={{fontSize:9}}>
+                      <th style={{background:"var(--blue-bg)"}}>PL-A $</th>
+                      <th style={{background:"var(--blue-bg)"}}>$/ct R</th>
+                      <th style={{background:"var(--blue-bg)"}}>PL-M $</th>
+                      <th style={{background:"var(--blue-bg)"}}>Hot %</th>
+                      <th style={{background:"rgba(220,38,38,0.06)"}}>PL-A $</th>
+                      <th style={{background:"rgba(220,38,38,0.06)"}}>$/ct R</th>
+                      <th style={{background:"rgba(220,38,38,0.06)"}}>PL-M $</th>
+                      <th style={{background:"rgba(220,38,38,0.06)"}}>Hot %</th>
+                      <th style={{background:"var(--amber-bg)"}}>Δ PL-A</th>
+                      <th style={{background:"var(--amber-bg)"}}>Δ Hot%</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {PARCEL_DEFS.map((pDef, pi) => {
+                      const pcl = parcels[pi]; const cmp = wholeVsSawn[pi];
+                      if (!cmp) return null;
+                      const w = cmp.whole; const s = cmp.sawn;
+                      return <tr key={pDef.id}>
+                        <td style={{textAlign:"left",paddingLeft:12,fontWeight:700}}>#{pcl.number}</td>
+                        <td style={{textAlign:"left",fontWeight:600,color:"var(--blue)",fontSize:11}}>{pDef.label}{cutModes[pi]===2 && <span style={{fontSize:8,background:"#dc2626",color:"#fff",borderRadius:3,padding:"0 3px",marginLeft:4}}>ACTIVE</span>}</td>
+                        <td style={{fontFamily:"var(--mono)"}}>{f(w.rC,1)}</td>
+                        <td style={{fontFamily:"var(--mono)",background:"var(--blue-bg)",fontWeight:600,color:"var(--blue)"}}>${w.totA.toLocaleString()}</td>
+                        <td style={{fontFamily:"var(--mono)",background:"var(--blue-bg)"}}>${w.bidA}</td>
+                        <td style={{fontFamily:"var(--mono)",background:"var(--blue-bg)"}}>${w.totM.toLocaleString()}</td>
+                        <td style={{fontFamily:"var(--mono)",background:"var(--blue-bg)"}}>{f(w.hotPct,1)}%</td>
+                        <td style={{fontFamily:"var(--mono)",background:"rgba(220,38,38,0.06)",fontWeight:600,color:"#dc2626"}}>${s.totA.toLocaleString()}</td>
+                        <td style={{fontFamily:"var(--mono)",background:"rgba(220,38,38,0.06)"}}>${s.bidA}</td>
+                        <td style={{fontFamily:"var(--mono)",background:"rgba(220,38,38,0.06)"}}>${s.totM.toLocaleString()}</td>
+                        <td style={{fontFamily:"var(--mono)",background:"rgba(220,38,38,0.06)"}}>{f(s.hotPct,1)}%</td>
+                        <td style={{fontFamily:"var(--mono)",fontWeight:700,background:"var(--amber-bg)",
+                          color: cmp.deltaA>0?"var(--green)":cmp.deltaA<0?"var(--red)":"var(--text3)"
+                        }}>{cmp.deltaA>0?"+":""}{cmp.deltaA!==0?"$"+Math.round(cmp.deltaA).toLocaleString():"—"}</td>
+                        <td style={{fontFamily:"var(--mono)",fontWeight:600,background:"var(--amber-bg)",
+                          color: cmp.deltaHot>0?"var(--green)":cmp.deltaHot<0?"var(--red)":"var(--text3)"
+                        }}>{cmp.deltaHot>0?"+":""}{f(cmp.deltaHot,1)}%</td>
+                      </tr>;
+                    })}
+                    {(() => {
+                      const gw = wholeVsSawn.reduce((s,c)=>({totA:s.totA+c.whole.totA,totM:s.totM+c.whole.totM}),{totA:0,totM:0});
+                      const gs = wholeVsSawn.reduce((s,c)=>({totA:s.totA+c.sawn.totA,totM:s.totM+c.sawn.totM}),{totA:0,totM:0});
+                      const gRc = allParcelPolish.reduce((s,p)=>s+p.rC,0);
+                      const gDelta = gs.totA-gw.totA;
+                      return <tr style={{fontWeight:700,borderTop:"2px solid var(--border)"}}>
+                        <td colSpan={2} style={{textAlign:"left",paddingLeft:12}}>TOTAL</td>
+                        <td style={{fontFamily:"var(--mono)"}}>{f(gRc,1)}</td>
+                        <td style={{fontFamily:"var(--mono)",background:"var(--blue-bg)",color:"var(--blue)"}}>${gw.totA.toLocaleString()}</td>
+                        <td style={{fontFamily:"var(--mono)",background:"var(--blue-bg)"}}>${gRc>0?Math.round(gw.totA/gRc):0}</td>
+                        <td style={{fontFamily:"var(--mono)",background:"var(--blue-bg)"}}>${gw.totM.toLocaleString()}</td>
+                        <td style={{background:"var(--blue-bg)"}}></td>
+                        <td style={{fontFamily:"var(--mono)",background:"rgba(220,38,38,0.06)",color:"#dc2626"}}>${gs.totA.toLocaleString()}</td>
+                        <td style={{fontFamily:"var(--mono)",background:"rgba(220,38,38,0.06)"}}>${gRc>0?Math.round(gs.totA/gRc):0}</td>
+                        <td style={{fontFamily:"var(--mono)",background:"rgba(220,38,38,0.06)"}}>${gs.totM.toLocaleString()}</td>
+                        <td style={{background:"rgba(220,38,38,0.06)"}}></td>
+                        <td style={{fontFamily:"var(--mono)",background:"var(--amber-bg)",
+                          color:gDelta>0?"var(--green)":gDelta<0?"var(--red)":"var(--text3)"
+                        }}>{gDelta>0?"+":""}${Math.round(gDelta).toLocaleString()}</td>
+                        <td style={{background:"var(--amber-bg)"}}></td>
+                      </tr>;
+                    })()}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <div style={{padding:"10px 16px",fontSize:11,color:"var(--text3)",borderTop:"1px solid var(--border)"}}>
+              Both scenarios use same rough data. Whole = your custom multipliers & yields. Sawn = ×2 multiplier, yield capped at 45%.
+              Green Δ = sawing is more profitable. $/ct R = total polish value ÷ rough cts (pre-labour/profit). Toggle cut mode per parcel from the parcel detail view.
+            </div>
+          </div>
+
           </>;
         })()}
 
@@ -2164,6 +2353,8 @@ export default function App() {
                   <th rowSpan={2}>Pol Value</th>
                   <th rowSpan={2}>Pol $/ct</th>
                   <th style={{borderLeft:"2px solid var(--border2)"}} rowSpan={2}>Rough $/ct<br/><span style={{fontSize:8,fontWeight:400,color:"var(--text3)"}}>Pol Val / R.Cts</span></th>
+                  <th style={{borderLeft:"2px solid var(--border2)",background:"var(--purple-bg)",color:"var(--purple)"}} rowSpan={2}>Opening</th>
+                  <th style={{background:"var(--amber-bg)",color:"var(--amber)"}} rowSpan={2}>Sold</th>
                   <th rowSpan={2}>Last Sold</th>
                   <th style={{borderLeft:"2px solid var(--border2)",background:"var(--blue-bg)",color:"var(--blue)"}} colSpan={4}>Bid Calculator</th>
                 </tr>
@@ -2172,7 +2363,7 @@ export default function App() {
                   <th style={{background:"var(--blue-bg)",borderLeft:"2px solid var(--border2)"}}>Labour</th>
                   <th style={{background:"var(--blue-bg)"}}>Profit %</th>
                   <th style={{background:"var(--green-bg)",color:"var(--green)"}}>Bid $/ct</th>
-                  <th style={{background:"var(--green-bg)",color:"var(--green)"}}>vs Last</th>
+                  <th style={{background:"var(--green-bg)",color:"var(--green)"}}>vs Sold</th>
                 </tr>
               </thead><tbody>
                 {PARCEL_DEFS.map((pDef, pi) => {
@@ -2188,7 +2379,8 @@ export default function App() {
                   const bid = calcBid(p.tot, p.rC, labour, profit);
                   const totalLabour = labour * p.rC;
                   const lastSold = parseFloat(pcl.lastSold) || 0;
-                  const vsPrev = lastSold > 0 ? ((bid - lastSold) / lastSold * 100) : 0;
+                  const soldP = pcl.soldPrice || 0;
+                  const vsSold = soldP > 0 && bid > 0 ? ((bid - soldP) / soldP * 100) : 0;
                   const pp = perParcelBid[pi];
                   const isOverride = pp && !pp.useGlobal;
 
@@ -2207,6 +2399,8 @@ export default function App() {
                       <td className="amber bold">{fd(p.tot)}</td>
                       <td>{polPerCt > 0 ? fd(polPerCt) : "—"}</td>
                       <td style={{borderLeft:"2px solid var(--border2)",fontWeight:700,color:"var(--blue)"}}>{roughPerCt > 0 ? fd(roughPerCt) : "—"}</td>
+                      <td style={{borderLeft:"2px solid var(--border2)",background:"var(--purple-bg)",fontWeight:600,color:"var(--purple)"}}>${pcl.openingPrice || "—"}</td>
+                      <td style={{background:"var(--amber-bg)",fontWeight:700,color:"var(--amber)"}}>${soldP || "—"}</td>
                       <td>{lastSold > 0 ? "$"+lastSold : "—"}</td>
                       <td style={{borderLeft:"2px solid var(--border2)"}}>
                         <NI value={isOverride ? pp.labour : globalLabour}
@@ -2223,8 +2417,8 @@ export default function App() {
                         />
                       </td>
                       <td style={{fontWeight:800,fontSize:14,color: bid > 0 ? "var(--green)" : "var(--text3)"}}>{bid > 0 ? "$"+f(bid,0) : "—"}</td>
-                      <td style={{fontWeight:600,fontSize:11,color: vsPrev > 0 ? "var(--red)" : vsPrev < 0 ? "var(--green)" : "var(--text3)"}}>
-                        {lastSold > 0 && bid > 0 ? (vsPrev >= 0 ? "+" : "") + f(vsPrev,1) + "%" : "—"}
+                      <td style={{fontWeight:600,fontSize:11,color: vsSold > 0 ? "var(--green)" : vsSold < 0 ? "var(--red)" : "var(--text3)"}}>
+                        {soldP > 0 && bid > 0 ? (vsSold >= 0 ? "+" : "") + f(vsSold,1) + "%" : "—"}
                       </td>
                     </tr>);
                 })}
@@ -2241,6 +2435,8 @@ export default function App() {
                   <td className="amber bold">{fd(gTot)}</td>
                   <td className="bold">{gPc > 0 ? fd(gTot/gPc) : "—"}</td>
                   <td style={{borderLeft:"2px solid var(--border2)",fontWeight:800,color:"var(--blue)"}}>{gRc > 0 ? fd(gTot/gRc) : "—"}</td>
+                  <td style={{borderLeft:"2px solid var(--border2)",background:"var(--purple-bg)"}}></td>
+                  <td style={{background:"var(--amber-bg)"}}></td>
                   <td></td>
                   <td style={{borderLeft:"2px solid var(--border2)"}} colSpan={4}></td>
                 </tr>
@@ -2248,9 +2444,9 @@ export default function App() {
             </div>
             <div style={{padding:"8px 14px",fontSize:10,color:"var(--text3)",display:"flex",gap:16}}>
               <span>Yellow inputs = per-parcel override</span>
-              <span>vs Last = % difference between bid and last auction price</span>
-              <span style={{color:"var(--green)"}}>Green = below last sold</span>
-              <span style={{color:"var(--red)"}}>Red = above last sold</span>
+              <span>vs Sold = % difference between our bid and actual sold price</span>
+              <span style={{color:"var(--green)"}}>Green = our bid above sold (would have won)</span>
+              <span style={{color:"var(--red)"}}>Red = our bid below sold (would have lost)</span>
             </div>
           </div>
 
@@ -2276,13 +2472,13 @@ export default function App() {
                     <span className={`badge ${pDef.type === "SW" ? "badge-blue" : "badge-amber"}`}>{pDef.type}</span>
                   </div>
                   <div className="card-body">
-                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:12}}>
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:12}}>
                       <div><span className="lbl">Rough CTS</span><div style={{fontFamily:"var(--mono)",fontWeight:600}}>{f(p.rC,2)}</div></div>
                       <div><span className="lbl">Polish CTS</span><div style={{fontFamily:"var(--mono)",fontWeight:600,color:"var(--blue)"}}>{f(p.pC,2)}</div></div>
                       <div><span className="lbl">Yield</span><div style={{fontFamily:"var(--mono)",fontWeight:600}}>{f(yld,1)}%</div></div>
-                      <div><span className="lbl">Polish Value</span><div style={{fontFamily:"var(--mono)",fontWeight:700,color:"var(--amber)"}}>{fd(p.tot)}</div></div>
-                      <div><span className="lbl">Last Sold $/ct</span><div style={{fontFamily:"var(--mono)",fontWeight:600}}>{lastSold > 0 ? "$"+lastSold : "—"}</div></div>
-                      <div><span className="lbl">Hot Size %</span><div style={{fontFamily:"var(--mono)",fontWeight:600,color: p.hotPct > 50 ? "var(--green)" : "var(--red)"}}>{f(p.hotPct,1)}%</div></div>
+                      <div><span className="lbl">Opening Price</span><div style={{fontFamily:"var(--mono)",fontWeight:700,color:"var(--purple)"}}>${pcl.openingPrice || "—"}/ct</div></div>
+                      <div><span className="lbl">Sold Price (Mar)</span><div style={{fontFamily:"var(--mono)",fontWeight:700,color:"var(--amber)"}}>${pcl.soldPrice || "—"}/ct</div></div>
+                      <div><span className="lbl">Last Sold (Feb)</span><div style={{fontFamily:"var(--mono)",fontWeight:600}}>{lastSold > 0 ? "$"+lastSold+"/ct" : "—"}</div></div>
                     </div>
 
                     {/* Waterfall */}
@@ -2311,6 +2507,19 @@ export default function App() {
                         <span style={{fontSize:13,fontWeight:700,color:"var(--green)"}}>BID PRICE $/ct</span>
                         <span style={{fontFamily:"var(--mono)",fontWeight:800,fontSize:18,color:"var(--green)"}}>{bid > 0 ? "$"+f(bid,0) : "—"}</span>
                       </div>
+                      {/* Auction comparison */}
+                      {pcl.soldPrice > 0 && bid > 0 && <div style={{display:"flex",justifyContent:"space-between",padding:"3px 0",borderTop:"1px dashed var(--border)"}}>
+                        <span style={{fontSize:10,color:"var(--amber)"}}>vs Sold (${pcl.soldPrice}/ct)</span>
+                        <span style={{fontFamily:"var(--mono)",fontSize:11,fontWeight:700,color: bid >= pcl.soldPrice ? "var(--green)" : "var(--red)"}}>
+                          {bid >= pcl.soldPrice ? "✓ WINS +" : "✗ LOST −"}${f(Math.abs(bid - pcl.soldPrice),0)} ({(bid >= pcl.soldPrice ? "+" : "") + f((bid - pcl.soldPrice)/pcl.soldPrice*100,1)}%)
+                        </span>
+                      </div>}
+                      {pcl.openingPrice > 0 && bid > 0 && <div style={{display:"flex",justifyContent:"space-between",padding:"3px 0"}}>
+                        <span style={{fontSize:10,color:"var(--purple)"}}>vs Opening (${pcl.openingPrice}/ct)</span>
+                        <span style={{fontFamily:"var(--mono)",fontSize:11,fontWeight:600,color: bid > pcl.openingPrice ? "var(--green)" : "var(--red)"}}>
+                          {bid > pcl.openingPrice ? "↑" : "↓"} ${f(Math.abs(bid - pcl.openingPrice),0)} ({(bid > pcl.openingPrice ? "+" : "") + f((bid - pcl.openingPrice)/pcl.openingPrice*100,1)}%)
+                        </span>
+                      </div>}
                       {lastSold > 0 && bid > 0 && <div style={{display:"flex",justifyContent:"space-between",padding:"3px 0"}}>
                         <span style={{fontSize:10,color:"var(--text3)"}}>vs Last Sold (${lastSold})</span>
                         <span style={{fontFamily:"var(--mono)",fontSize:11,fontWeight:700,color: bid > lastSold ? "var(--red)" : "var(--green)"}}>
@@ -2327,8 +2536,8 @@ export default function App() {
           {/* ═══ PL-A vs PL-M COMPARISON ═══ */}
           <div className="card" style={{borderLeft:"3px solid var(--blue)"}}>
             <div className="card-hdr">
-              <span className="card-title">Price List Comparison — PL-A vs PL-M (Surat Market)</span>
-              <span style={{fontSize:10,color:"var(--text3)"}}>PL-M = Avg(PL-X,PL-Y) + 20% premium · Realistic EF PL-based color/clarity discounts</span>
+              <span className="card-title">Bid Summary — Our Bids vs Auction Results</span>
+              <span style={{fontSize:10,color:"var(--text3)"}}>PL-A = Amay V3 · PL-M = Market Avg + 20% · Opening = ODC start price · Sold = final auction result</span>
             </div>
             <div className="overflow-x">
               <table><thead>
@@ -2336,87 +2545,148 @@ export default function App() {
                   <th style={{textAlign:"left"}}>Lot</th>
                   <th style={{textAlign:"left"}}>Parcel</th>
                   <th>Rough CTS</th>
-                  <th style={{background:"var(--blue-bg)",color:"var(--blue)"}}>PL-A Value</th>
                   <th style={{background:"var(--blue-bg)",color:"var(--blue)"}}>PL-A $/ct R</th>
                   <th style={{background:"var(--blue-bg)",color:"var(--blue)"}}>PL-A Bid</th>
-                  <th style={{background:"var(--green-bg)",color:"var(--green)"}}>PL-M Value</th>
                   <th style={{background:"var(--green-bg)",color:"var(--green)"}}>PL-M $/ct R</th>
                   <th style={{background:"var(--green-bg)",color:"var(--green)"}}>PL-M Bid</th>
-                  <th style={{background:"var(--amber-bg)",color:"var(--amber)"}}>Savings $</th>
-                  <th style={{background:"var(--amber-bg)",color:"var(--amber)"}}>Savings %</th>
+                  <th style={{background:"var(--purple-bg)",color:"var(--purple)"}}>Opening $/ct</th>
+                  <th style={{background:"var(--amber-bg)",color:"var(--amber)"}}>Sold $/ct</th>
+                  <th style={{background:"var(--amber-bg)",color:"var(--amber)"}}>Sold Total</th>
                   <th>Last Sold</th>
+                  <th style={{background:"var(--green-bg)",color:"var(--green)"}}>PL-A vs Sold</th>
+                  <th style={{background:"var(--green-bg)",color:"var(--green)"}}>PL-M vs Sold</th>
                 </tr>
               </thead><tbody>
                 {PARCEL_DEFS.map((pDef, pi) => {
                   const p = allParcelPolish[pi]; const pcl = parcels[pi];
                   const bidA = calcBid(p.totA, p.rC, getLabour(pi), getProfit(pi));
                   const bidM = calcBid(p.totM, p.rC, getLabour(pi), getProfit(pi));
-                  const savings = p.totM - p.totA;
-                  const savPct = p.totA > 0 ? savings / p.totA * 100 : 0;
+                  const openP = pcl.openingPrice || 0;
+                  const soldP = pcl.soldPrice || 0;
+                  const soldTot = pcl.soldTotal || 0;
+                  const plaVsSold = soldP > 0 && bidA > 0 ? ((bidA - soldP)/soldP*100).toFixed(1) : "—";
+                  const plmVsSold = soldP > 0 && bidM > 0 ? ((bidM - soldP)/soldP*100).toFixed(1) : "—";
                   return <tr key={pDef.id}>
                     <td style={{textAlign:"left",fontWeight:600}}>#{pcl.number}</td>
                     <td style={{textAlign:"left",fontSize:11}}>{pDef.label}</td>
                     <td>{p.rC.toFixed(1)}</td>
-                    <td style={{background:"var(--blue-bg)",fontWeight:600}}>${p.totA.toLocaleString()}</td>
-                    <td style={{background:"var(--blue-bg)"}}>${p.rC > 0 ? Math.round(p.totA/p.rC) : 0}</td>
-                    <td style={{background:"var(--blue-bg)",fontWeight:600}}>${Math.round(bidA)}</td>
-                    <td style={{background:"var(--green-bg)",fontWeight:600}}>${p.totM.toLocaleString()}</td>
-                    <td style={{background:"var(--green-bg)"}}>${p.rC > 0 ? Math.round(p.totM/p.rC) : 0}</td>
-                    <td style={{background:"var(--green-bg)",fontWeight:600}}>${Math.round(bidM)}</td>
-                    <td style={{background:"var(--amber-bg)",fontWeight:700,color:savings>0?"var(--green)":"var(--red)"}}>{savings>0?"+":""}${Math.round(savings).toLocaleString()}</td>
-                    <td style={{background:"var(--amber-bg)",fontWeight:600,color:savings>0?"var(--green)":"var(--red)"}}>{savings>0?"+":""}{savPct.toFixed(1)}%</td>
+                    <td style={{background:"var(--blue-bg)",fontWeight:600}}>${p.rC > 0 ? Math.round(p.totA/p.rC) : 0}</td>
+                    <td style={{background:"var(--blue-bg)",fontWeight:700,color:"var(--blue)"}}>${Math.round(bidA)}</td>
+                    <td style={{background:"var(--green-bg)",fontWeight:600}}>${p.rC > 0 ? Math.round(p.totM/p.rC) : 0}</td>
+                    <td style={{background:"var(--green-bg)",fontWeight:700,color:"var(--green)"}}>${Math.round(bidM)}</td>
+                    <td style={{background:"var(--purple-bg)",fontWeight:600,color:"var(--purple)"}}>${openP}</td>
+                    <td style={{background:"var(--amber-bg)",fontWeight:700,color:"var(--amber)"}}>${soldP}</td>
+                    <td style={{background:"var(--amber-bg)",fontFamily:"var(--mono)",fontSize:11}}>${soldTot.toLocaleString()}</td>
                     <td style={{fontWeight:600}}>${pcl.lastSold}</td>
+                    <td style={{background:"var(--green-bg)",fontWeight:700,fontFamily:"var(--mono)",fontSize:11,
+                      color: plaVsSold !== "—" ? (parseFloat(plaVsSold) < 0 ? "var(--red)" : "var(--green)") : "var(--text3)"
+                    }}>{plaVsSold !== "—" ? (parseFloat(plaVsSold)>=0?"+":"")+plaVsSold+"%" : "—"}</td>
+                    <td style={{background:"var(--green-bg)",fontWeight:700,fontFamily:"var(--mono)",fontSize:11,
+                      color: plmVsSold !== "—" ? (parseFloat(plmVsSold) < 0 ? "var(--red)" : "var(--green)") : "var(--text3)"
+                    }}>{plmVsSold !== "—" ? (parseFloat(plmVsSold)>=0?"+":"")+plmVsSold+"%" : "—"}</td>
                   </tr>;
                 })}
                 {(() => {
                   const tA = allParcelPolish.reduce((s,p)=>s+p.totA,0);
                   const tM = allParcelPolish.reduce((s,p)=>s+p.totM,0);
                   const tRc = allParcelPolish.reduce((s,p)=>s+p.rC,0);
-                  const sav = tM - tA; const sp = tA > 0 ? sav/tA*100 : 0;
+                  const tSoldTot = PARCEL_DEFS.reduce((s,d)=>s+(d.parcel.soldTotal||0),0);
                   return <tr style={{fontWeight:700,borderTop:"2px solid var(--border2)"}}>
                     <td colSpan={2} style={{textAlign:"left"}}>GRAND TOTAL</td>
                     <td>{tRc.toFixed(1)}</td>
-                    <td style={{background:"var(--blue-bg)"}}>${tA.toLocaleString()}</td>
                     <td style={{background:"var(--blue-bg)"}}>${tRc>0?Math.round(tA/tRc):0}</td>
                     <td style={{background:"var(--blue-bg)"}}>—</td>
-                    <td style={{background:"var(--green-bg)"}}>${tM.toLocaleString()}</td>
                     <td style={{background:"var(--green-bg)"}}>${tRc>0?Math.round(tM/tRc):0}</td>
                     <td style={{background:"var(--green-bg)"}}>—</td>
-                    <td style={{background:"var(--amber-bg)",color:sav>0?"var(--green)":"var(--red)"}}>{sav>0?"+":""}${Math.round(sav).toLocaleString()}</td>
-                    <td style={{background:"var(--amber-bg)",color:sav>0?"var(--green)":"var(--red)"}}>{sav>0?"+":""}{sp.toFixed(1)}%</td>
+                    <td style={{background:"var(--purple-bg)"}}>—</td>
+                    <td style={{background:"var(--amber-bg)"}}>—</td>
+                    <td style={{background:"var(--amber-bg)",fontFamily:"var(--mono)"}}>${tSoldTot.toLocaleString()}</td>
                     <td>—</td>
+                    <td style={{background:"var(--green-bg)"}} colSpan={2}></td>
                   </tr>;
                 })()}
               </tbody></table>
             </div>
             <div style={{padding:"10px 16px",fontSize:11,color:"var(--text3)",borderTop:"1px solid var(--border)"}}>
-              PL-A = EF Price List rates (direct) · PL-M = Market average + 20% Surat premium · Color: DEF=100%, GHI=75%, JK=48.75% · Clarity: VVS=100%, VS1=81.5%, VS2=69.3%, SI1=59%, SI2=50%
+              PL-A Bid / PL-M Bid = our calculated bid after labour & profit deduction · Opening = ODC auction start price · Sold = final winning price · Green % = our bid above sold (would have won) · Red % = our bid below sold (would have lost)
+            </div>
+          </div>
+
+          {/* ═══ AUCTION PRICE COMPARISON — VISUAL CARD ═══ */}
+          <div className="card" style={{borderLeft:"3px solid var(--amber)"}}>
+            <div className="card-hdr">
+              <span className="card-title">Auction Price Waterfall — Per Lot</span>
+              <span style={{fontSize:10,color:"var(--text3)"}}>Opening → Sold → Our PL-A Bid → Our PL-M Bid · per carat rough</span>
+            </div>
+            <div className="card-body" style={{padding:0}}>
+              {PARCEL_DEFS.map((pDef, pi) => {
+                const p = allParcelPolish[pi]; const pcl = parcels[pi];
+                const bidA = calcBid(p.totA, p.rC, getLabour(pi), getProfit(pi));
+                const bidM = calcBid(p.totM, p.rC, getLabour(pi), getProfit(pi));
+                const openP = pcl.openingPrice || 0;
+                const soldP = pcl.soldPrice || 0;
+                const lastS = parseFloat(pcl.lastSold) || 0;
+                const maxVal = Math.max(bidA, bidM, soldP, openP, lastS, 1);
+                const barW = (v) => Math.max(v / maxVal * 100, 2) + "%";
+                const wouldWinA = bidA >= soldP;
+                const wouldWinM = bidM >= soldP;
+                return <div key={pDef.id} style={{borderBottom:"1px solid var(--border)",padding:"14px 20px"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+                    <span style={{fontWeight:700,color:"var(--blue)"}}>#{pcl.number} {pDef.label}</span>
+                    <div style={{display:"flex",gap:8}}>
+                      {wouldWinA && <span style={{fontSize:9,background:"var(--green-bg)",color:"var(--green)",borderRadius:4,padding:"2px 8px",fontWeight:700}}>PL-A WINS</span>}
+                      {wouldWinM && <span style={{fontSize:9,background:"var(--green-bg)",color:"var(--green)",borderRadius:4,padding:"2px 8px",fontWeight:700}}>PL-M WINS</span>}
+                      {!wouldWinA && !wouldWinM && <span style={{fontSize:9,background:"var(--red-bg)",color:"var(--red)",borderRadius:4,padding:"2px 8px",fontWeight:700}}>BOTH BELOW SOLD</span>}
+                    </div>
+                  </div>
+                  <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                    {[
+                      ["Opening", openP, "var(--purple)", "var(--purple-bg)"],
+                      ["Last Sold (Feb)", lastS, "var(--text3)", "var(--bg2)"],
+                      ["Sold (Mar)", soldP, "var(--amber)", "var(--amber-bg)"],
+                      ["Our PL-A Bid", Math.round(bidA), "var(--blue)", "var(--blue-bg)"],
+                      ["Our PL-M Bid", Math.round(bidM), "var(--green)", "var(--green-bg)"],
+                    ].map(([label, val, clr, bg]) => (
+                      <div key={label} style={{display:"flex",alignItems:"center",gap:8}}>
+                        <span style={{fontSize:10,color:"var(--text3)",width:110,textAlign:"right",flexShrink:0}}>{label}</span>
+                        <div style={{flex:1,background:"var(--bg2)",borderRadius:4,height:20,overflow:"hidden",position:"relative"}}>
+                          <div style={{width:barW(val),background:bg,borderRight:`3px solid ${clr}`,height:"100%",borderRadius:4,transition:"width .3s"}}></div>
+                        </div>
+                        <span style={{fontFamily:"var(--mono)",fontSize:12,fontWeight:700,color:clr,width:60,textAlign:"right",flexShrink:0}}>${val}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>;
+              })}
             </div>
           </div>
 
           {/* Comparison bar chart */}
           <div className="chart-wrap">
             <div className="chart-box" style={{flex:"1 1 100%"}}>
-              <div className="chart-title">PL-A vs PL-M — Polish Value & Bid Price Comparison</div>
-              <ResponsiveContainer width="100%" height={280}>
+              <div className="chart-title">Our Bids vs Auction — $/ct Rough Comparison</div>
+              <ResponsiveContainer width="100%" height={300}>
                 <BarChart data={PARCEL_DEFS.map((pDef, pi) => {
                   const p = allParcelPolish[pi]; const pcl = parcels[pi];
                   return {
                     name: "#"+pcl.number+" "+pDef.type,
-                    "PL-A Value": p.totA, "PL-M Value": p.totM,
+                    "Opening": pcl.openingPrice || 0,
                     "PL-A Bid": Math.round(calcBid(p.totA, p.rC, getLabour(pi), getProfit(pi))),
                     "PL-M Bid": Math.round(calcBid(p.totM, p.rC, getLabour(pi), getProfit(pi))),
+                    "Sold": pcl.soldPrice || 0,
                     "Last Sold": parseFloat(pcl.lastSold) || 0,
                   };
                 })} barGap={4}>
                   <CartesianGrid strokeDasharray="3 3" stroke={CG} />
                   <XAxis dataKey="name" tick={{fontSize:10,fill:CX}} />
                   <YAxis tick={{fontSize:10,fill:CY}} tickFormatter={v => "$"+v} />
-                  <Tooltip formatter={(v) => "$"+Number(v).toLocaleString()} />
+                  <Tooltip formatter={(v) => "$"+Number(v).toLocaleString()+"/ct"} />
                   <Legend wrapperStyle={{fontSize:11}} />
+                  <Bar dataKey="Opening" fill="#7c3aed" radius={[4,4,0,0]} />
                   <Bar dataKey="PL-A Bid" fill="#3b82f6" radius={[4,4,0,0]} />
                   <Bar dataKey="PL-M Bid" fill="#16a34a" radius={[4,4,0,0]} />
-                  <Bar dataKey="Last Sold" fill="#f59e0b" radius={[4,4,0,0]} />
+                  <Bar dataKey="Sold" fill="#d97706" radius={[4,4,0,0]} />
+                  <Bar dataKey="Last Sold" fill="#94a3b8" radius={[4,4,0,0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -2605,7 +2875,7 @@ export default function App() {
                     DEF, G, H colors<br/>
                     VVS, VS1, VS2 clarities<br/>
                     Rounds + Fancies (all shapes)<br/>
-                    Hot band sizes prioritized (2.70-2.89mm, 3.30-3.69mm)
+                    Hot band sizes prioritized (2.60-2.79mm, 3.20-3.59mm)
                   </div>
                 </div>
                 <div style={{background:"var(--amber-bg)",borderRadius:8,padding:12,border:"1px solid var(--border)"}}>
@@ -2629,41 +2899,40 @@ export default function App() {
             </div>
             <div className="card-body">
               <div style={{fontSize:12,color:"var(--text2)",marginBottom:12}}>
-                Stones that naturally polish to 2.90-2.95mm (just outside Band 3a: 2.70-2.89mm) can be over-polished to ~2.85mm. Weight sacrifice is ~8% but the stone becomes a confirmed-demand hot band size instead of inventory.
+                Stones that naturally polish to 2.80-2.85mm (just outside Band 3a: 2.60-2.79mm) can be over-polished to ~2.75mm. Weight sacrifice is ~8% but the stone becomes a confirmed-demand hot band size instead of inventory.
               </div>
               <div className="overflow-x">
                 <table><thead><tr>
                   <th style={{textAlign:"left"}}>Parcel</th>
-                  <th>Gap Stones (2.90-3.10mm)</th>
+                  <th>Gap Stones (2.80-3.00mm)</th>
                   <th>Of which D-H/VVS-VS2</th>
                   <th>After Over-Polish (-8%)</th>
                   <th>Target Band</th>
                 </tr></thead><tbody>
                   {PARCEL_DEFS.map((pDef, pi) => {
                     const p = allParcelPolish[pi]; const pcl = parcels[pi];
-                    // Find rows where polished avg falls in the 2.90-3.10mm gap
                     const gapRows = p.rows.filter(r => {
                       if (!r.av || r.av <= 0) return false;
                       const mm = ctsToMM(r.av);
-                      return mm >= 2.90 && mm <= 3.10;
+                      return mm >= 2.80 && mm <= 3.00;
                     });
                     const gapCts = gapRows.reduce((s,r)=>s+r.pC, 0);
                     const mfgGap = gapRows.filter(r => ["DEF","G","H"].includes(r.co) && ["VVS","VS1","VS2"].includes(r.cl));
                     const mfgGapCts = mfgGap.reduce((s,r)=>s+r.pC, 0);
-                    const overPolCts = mfgGapCts * 0.92; // 8% weight sacrifice
+                    const overPolCts = mfgGapCts * 0.92;
                     return <tr key={pDef.id}>
                       <td style={{textAlign:"left",fontWeight:700,color:"var(--blue)"}}>#{pcl.number} {pDef.label}</td>
                       <td style={{fontFamily:"'DM Mono',monospace"}}>{f(gapCts,2)} cts</td>
                       <td style={{fontFamily:"'DM Mono',monospace",fontWeight:700}}>{f(mfgGapCts,2)} cts</td>
                       <td style={{fontFamily:"'DM Mono',monospace",color:"var(--green)"}}>{f(overPolCts,2)} cts</td>
-                      <td style={{color:"var(--green)",fontWeight:600}}>→ 2.85mm (Band 3a)</td>
+                      <td style={{color:"var(--green)",fontWeight:600}}>→ 2.75mm (Band 3a)</td>
                     </tr>;
                   })}
                 </tbody></table>
               </div>
               <div style={{marginTop:12,padding:12,background:"var(--card2)",borderRadius:8,fontSize:11,color:"var(--text2)",lineHeight:1.7}}>
                 <strong style={{color:"var(--text)"}}>Break-even point:</strong> Over-polishing is profitable when non-hot sizes sell at ≤85% of PL-A. If non-hot discount is 20%+ (selling at 80% PL-A), estimated gain is ~$2,000 per Lot 91. <br/>
-                <strong style={{color:"var(--text)"}}>Also applies to:</strong> 3.70-3.80mm stones → over-polish to 3.65mm (Band 3b). Only ~3% weight sacrifice.
+                <strong style={{color:"var(--text)"}}>Also applies to:</strong> 3.60-3.70mm stones → over-polish to 3.55mm (Band 3b). Only ~3% weight sacrifice.
               </div>
             </div>
           </div>
